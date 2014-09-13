@@ -27,7 +27,7 @@ public APIs.
 from setuptools import setup
 
 
-setup( name = "gnojam",
+setup( name = "gnajom",
        version = "0.9.0",
 
        packages = [ "gnajom" ],
