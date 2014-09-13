@@ -54,6 +54,17 @@ MINECRAFT_AGENT_V1 = {
 DEFAULT_CONFIG = expanduser("~/.gnajom")
 
 
+_cmd_help = """
+The following commands are supported:
+  help          print this message
+  authenticate  creates a new CLI session
+  refresh       refresh the lease on the existing CLI session
+  validate      check that the CLI session is still valid
+  invalidate    invalidate the existing key for this CLI session
+  signout       invalidate all sessions for the given user
+"""
+
+
 class ApiObject(object):
     """
     Lightweight wrapper for JSON via POST
@@ -163,7 +174,13 @@ def cli_do_invalidate(parser, options, *args):
     pass
 
 
+def cli_help_commands(_parser, _options, *_args):
+    print _cmd_help
+    return 0
+
+
 _COMMANDS = {
+    "help": cli_help_commands,
     "authenticate": cli_do_authenticate,
     "refresh": cli_do_refresh,
     "validate": cli_do_validate,
@@ -172,24 +189,26 @@ _COMMANDS = {
 }
 
 
-def cli(parser, options, *args):
-    if len(args) == 0:
-        parser.error("Please specify a command:" +
-                     ", ".join(sorted(_COMMANDS.keys())))
+def cli(parser, options, args):
+    if options.help_commands:
+        return cli_help_commands(parser, options)
 
-    cmd = args[0].lower()
+    if len(args) < 2:
+        parser.error("No command specified." + _cmd_help)
+
+    cmd = args[1].lower()
     if cmd not in _COMMANDS:
-        parser.error("Please select a valid command:" +
-                     ", ".join(sorted(_COMMANDS.keys())))
+        parser.error("Invalid command: %s%s" % (cmd, _cmd_help))
 
     else:
-        _COMMANDS[cmd](parser, options)
+        _COMMANDS[cmd](parser, options, *args)
 
 
 def cli_optparser():
     p = OptionParser("%prog COMMAND [options]")
     p.add_option_group(cli_auth_optgroup(p))
-
+    p.add_option("--help-commands", action="store_true", default=False,
+                 help="list available commands")
     return p
 
 
@@ -204,8 +223,8 @@ def cli_auth_optgroup(parser):
                  help="Mojang account user")
     g.add_option("-p", "--password", action="store", default=None,
                  help="Mojang account password")
-    g.add_option("--auth-host", action="store", default=None,
-                 help="Mojang Realms host")
+    g.add_option("-a", "--auth-host", action="store", default=None,
+                 help="Mojang authentication host")
 
     return g
 
