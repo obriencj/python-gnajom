@@ -51,6 +51,9 @@ MINECRAFT_AGENT_V1 = {
 }
 
 
+DEFAULT_CONFIG = expanduser("~/.gnajom")
+
+
 class ApiObject(object):
     """
     Lightweight wrapper for JSON via POST
@@ -201,26 +204,22 @@ def cli_auth_optgroup(parser):
                  help="Mojang account user")
     g.add_option("-p", "--password", action="store", default=None,
                  help="Mojang account password")
-    g.add_option("--auth-host", action="store", default=CLIENT_HOST,
+    g.add_option("--auth-host", action="store", default=None,
                  help="Mojang Realms host")
 
     return g
 
 
-def main(args):
-    parser = create_options()
+def main_cli():
+    parser = cli_optparser()
     try:
-        return cli(parser, *parser.parse(args))
+        return cli(parser, *parser.parse_args(sys.argv))
     except KeyboardInterrupt:
         print >> sys.stderr
         return 130
     except HTTPError as he:
         print >> sys.stderr, he
         return -1
-
-
-if __name__ == '__main__':
-    sys.exit(main(sys.args))
 
 
 #

@@ -51,9 +51,9 @@ setup( name = "gnajom",
 
        entry_points = {
            "console_scripts": [
-               'mojang-auth = gnajom:main',
-               #'minecraft-realm = gnajom.realms:main',
-               #'minecraft-user = gnajom.users:main',
+               'mojang-auth = gnajom:main_cli',
+               #'minecraft-realm = gnajom.realms:main_cli',
+               #'minecraft-user = gnajom.users:main_cli',
            ]} )
 
 #
