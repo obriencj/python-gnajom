@@ -18,6 +18,7 @@ nightly downloads of the latest realm backup.
 
 - [Python] 2.6 or later (no support for Python 3, because I don't care)
 - [requests](http://docs.python-requests.org/en/latest/)
+- [argparse](https://pypi.python.org/pypi/argparse)
 
 
 ## Author
