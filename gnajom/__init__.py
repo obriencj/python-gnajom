@@ -24,45 +24,28 @@ authentication system.
 """
 
 
-from json import dumps
-from optparse import OptionParser, OptionGroup
-from os.path import expanduser
-from requests import post
+from json import load, dump, dumps
+from requests import get, post
+from requests.cookies import RequestsCookieJar
 from requests.exceptions import HTTPError
 from uuid import uuid1
 
 import sys
 
 
-__all__ = ( "ApiObject", "Authentication",
-            "cli", "cli_options", "cli_auth_optgroup",
-            "cli_do_authenticate", "cli_do_refresh",
-            "cli_do_validate", "cli_do_invalidate",
-            "cli_do_signoff",
-            "main" )
+__all__ = ( "ApiObject", "Authentication", "generate_clientToken",
+            "HOST_YGGDRASIL", "DEFAULT_AUTH_HOST",
+            "MINECRAFT_AGENT_V1" )
 
 
 HOST_YGGDRASIL = "https://authserver.mojang.com"
 
+DEFAULT_AUTH_HOST = HOST_YGGDRASIL
 
 MINECRAFT_AGENT_V1 = {
     "name": "Minecraft",
     "version": 1,
 }
-
-
-DEFAULT_CONFIG = expanduser("~/.gnajom")
-
-
-_cmd_help = """
-The following commands are supported:
-  help          print this message
-  authenticate  creates a new CLI session
-  refresh       refresh the lease on the existing CLI session
-  validate      check that the CLI session is still valid
-  invalidate    invalidate the existing key for this CLI session
-  signout       invalidate all sessions for the given user
-"""
 
 
 class ApiObject(object):
@@ -72,16 +55,33 @@ class ApiObject(object):
 
     def __init__(self, hosturi):
         self._host = hosturi
+        self.cookies = RequestsCookieJar()
+
+
+    def get(self, endpoint):
+        resp = get(self._host + endpoint, cookies=self.cookies)
+
+        resp.raise_for_status()
+
+        if len(resp.content):
+            return resp.json()
+        else:
+            return None
 
 
     def post(self, endpoint, payload):
         data = dumps(payload)
-        resp = post(self._host + endpoint, data)
+        resp = post(self._host + endpoint, data, cookies=self.cookies)
+
         resp.raise_for_status()
-        return resp.json()
+
+        if len(resp.content):
+            return resp.json()
+        else:
+            return None
 
 
-class Authentication(ApiObject):
+class Authentication(object):
     """
     A thin wrapper for the Mojang authentiation scheme, 'Yggdrasil'
 
@@ -91,19 +91,21 @@ class Authentication(ApiObject):
     """
 
     def __init__(self, username, clientToken=None, accessToken=None,
-                 authhost=HOST_YGGDRASIL, agent=MINECRAFT_AGENT_V1):
+                 host=HOST_YGGDRASIL, agent=MINECRAFT_AGENT_V1):
 
-        self.api = ApiObject(authhost)
+        self.api = ApiObject(host)
         self.username = username
+        self.user = None
         self.agent = agent
-        self.clientToken = None
-        self.accessToken = None
-        self.profile = None
+        self.clientToken = clientToken
+        self.accessToken = accessToken
+        self.selectedProfile = None
 
 
     def authenticate(self, password):
         payload = { "username": self.username,
-                    "password": password, }
+                    "password": password,
+                    "requestUser": True }
 
         if self.agent:
             payload["agent"] = self.agent
@@ -115,15 +117,21 @@ class Authentication(ApiObject):
 
         self.clientToken = ret["clientToken"]
         self.accessToken = ret["accessToken"]
-        self.profile = ret["selectedProfile"]
+        self.selectedProfile = ret.get("selectedProfile")
+        self.user = ret.get("user")
 
 
     def refresh(self):
         payload = { "accessToken": self.accessToken,
                     "clientToken": self.clientToken,
-                    "selectedProfile": self.profile, }
+                    "requestUser": True }
 
         ret = self.api.post("/refresh", payload)
+
+        self.clientToken = ret["clientToken"]
+        self.accessToken = ret["accessToken"]
+        self.selectedProfile = ret.get("selectedProfile")
+        self.user = ret.get("user")
 
 
     def validate(self):
@@ -146,99 +154,27 @@ class Authentication(ApiObject):
         ret = self.api.post("/invalidate", payload)
 
 
-def gen_clientToken():
+    def load(self, filename):
+        with open(filename) as fd:
+            session = load(fd)
+
+        self.__dict__.update(session)
+
+
+    def save(self, filename):
+        session = dict(self.__dict__)
+        del session["api"]
+
+        with open(filename, "w") as fd:
+            dump(session, fd)
+
+
+def generate_clientToken():
     """
     Generate a random clientToken string via UUID
     """
 
     return uuid.uuid1().bytes.encode("hex")
-
-
-def cli_do_authenticate(parser, options, *args):
-    pass
-
-
-def cli_do_refresh(parser, options, *args):
-    pass
-
-
-def cli_do_validate(parser, options, *args):
-    pass
-
-
-def cli_do_signout(parser, options, *args):
-    pass
-
-
-def cli_do_invalidate(parser, options, *args):
-    pass
-
-
-def cli_help_commands(_parser, _options, *_args):
-    print _cmd_help
-    return 0
-
-
-_COMMANDS = {
-    "help": cli_help_commands,
-    "authenticate": cli_do_authenticate,
-    "refresh": cli_do_refresh,
-    "validate": cli_do_validate,
-    "signout": cli_do_signout,
-    "invalidate": cli_do_invalidate,
-}
-
-
-def cli(parser, options, args):
-    if options.help_commands:
-        return cli_help_commands(parser, options)
-
-    if len(args) < 2:
-        parser.error("No command specified." + _cmd_help)
-
-    cmd = args[1].lower()
-    if cmd not in _COMMANDS:
-        parser.error("Invalid command: %s%s" % (cmd, _cmd_help))
-
-    else:
-        _COMMANDS[cmd](parser, options, *args)
-
-
-def cli_optparser():
-    p = OptionParser("%prog COMMAND [options]")
-    p.add_option_group(cli_auth_optgroup(p))
-    p.add_option("--help-commands", action="store_true", default=False,
-                 help="list available commands")
-    return p
-
-
-def cli_auth_optgroup(parser):
-    g = OptionGroup(parser, "Authentication Options")
-
-    g.add_option("-c", "--config", action="store", default=DEFAULT_CONFIG,
-                 help="Configuration file to use")
-    g.add_option("-r", "--profile", action="store", default=None,
-                 help="Login profile to use")
-    g.add_option("-u", "--username", action="store", default=None,
-                 help="Mojang account user")
-    g.add_option("-p", "--password", action="store", default=None,
-                 help="Mojang account password")
-    g.add_option("-a", "--auth-host", action="store", default=None,
-                 help="Mojang authentication host")
-
-    return g
-
-
-def main_cli():
-    parser = cli_optparser()
-    try:
-        return cli(parser, *parser.parse_args(sys.argv))
-    except KeyboardInterrupt:
-        print >> sys.stderr
-        return 130
-    except HTTPError as he:
-        print >> sys.stderr, he
-        return -1
 
 
 #
