@@ -14,7 +14,9 @@
 
 
 """
-gnajom.cli - Module with command-line features for gnajom
+gnajom.cli - Module with command-line features for gnajom.
+Provides access to various aspects of the APIs via a nested
+sub-command system.
 
 :author: Christopher O'Brien <obriencj@gmail.com>
 :license: LGPL v3
@@ -30,7 +32,7 @@ from os import makedirs
 from os.path import basename, exists, expanduser, split
 from ConfigParser import SafeConfigParser
 
-from gnajom import Authentication, DEFAULT_AUTH_HOST
+from .auth import Authentication, DEFAULT_AUTH_HOST
 from .realms import RealmsAPI, DEFAULT_REALMS_HOST, DEFAULT_REALMS_VERSION
 
 
