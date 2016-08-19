@@ -71,6 +71,7 @@ def save_auth(options, auth):
         makedirs(path, 0700)
 
     auth.save(session)
+    chmod(session, 0600)
 
 
 def cli_command_auth_connect(options):
