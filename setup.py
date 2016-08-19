@@ -27,34 +27,31 @@ public APIs.
 from setuptools import setup
 
 
-setup( name = "gnajom",
-       version = "0.9.0",
+setup(name = "gnajom",
+      version = "0.9.0",
 
-       packages = [ "gnajom" ],
+      packages = [ "gnajom" ],
 
-       author = "Christopher O'Brien",
-       author_email = "obriencj@gmail.com",
-       url = "https://github.com/obriencj/python-gnajom",
-       license = "GNU Lesser General Public License",
+      author = "Christopher O'Brien",
+      author_email = "obriencj@gmail.com",
+      url = "https://github.com/obriencj/python-gnajom",
+      license = "GNU Lesser General Public License v3",
 
-       description = "Module and command line tools for working with"
-       " Mojang's public APIs",
+      description = "Module and command line tools for working with"
+      " Mojang's public APIs",
 
-       provides = [ "gnajom" ],
-       requires = [ "requests" ],
-       platforms = [ "python2 >= 2.6" ],
+      provides = [ "gnajom" ],
+      requires = [ "requests" ],
 
-       zip_safe = True,
+      zip_safe = True,
 
-       classifiers = [ "Environment :: Console",
-                    "Programming Language :: Python :: 2" ],
+      classifiers = [ "Environment :: Console",
+                      "Programming Language :: Python :: 2" ],
 
-       entry_points = {
-           "console_scripts": [
-               'mojang-auth = gnajom:main_cli',
-               #'minecraft-realm = gnajom.realms:main_cli',
-               #'minecraft-user = gnajom.users:main_cli',
-           ]} )
+      entry_points = {
+          "console_scripts": ['gnajom=gnajom.cli:main']
+      })
+
 
 #
 # The end.
