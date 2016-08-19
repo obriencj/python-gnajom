@@ -13,6 +13,9 @@ nightly downloads of the latest realm backup.
 
 [Minecraft Realms]: http://minecraft.net/realms
 
+The majority of the API information used in this library is straight
+from the excellent resource [wiki.vg](http://wiki.vg)
+
 
 ## Requirements
 
