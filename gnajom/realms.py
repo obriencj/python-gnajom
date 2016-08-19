@@ -21,7 +21,12 @@ gnajom.realms - Python module for working with Realms servers.
 """
 
 
-from gnajom import ApiObject
+from gnajom import ApiHelper
+
+
+__all__ = ( "RealmsAPI",
+            "HOST_DESKTOP_REALMS", "HOST_PE_REALMS",
+            "DEFAULT_REALMS_HOST", "DEFAULT_REALMS_VERSION" )
 
 
 HOST_DESKTOP_REALMS = "https://mcoapi.minecraft.net"
@@ -43,11 +48,12 @@ class RealmsAPI(object):
     def __init__(self, auth, host=DEFAULT_REALMS_HOST,
                  version=DEFAULT_REALMS_VERSION):
 
+        # compose the necessary cookies from data in the auth object
         self.auth = auth
         sid =  "token:%s:%s" % (auth.accessToken, auth.selectedProfile["id"])
         user = auth.selectedProfile["name"]
 
-        self.api = ApiObject(host)
+        self.api = ApiHelper(host)
         self.api.cookies.set("sid", sid)
         self.api.cookies.set("user", user)
         self.api.cookies.set("version", version)
@@ -66,22 +72,43 @@ class RealmsAPI(object):
 
 
     def realm_list(self):
+        """
+        List the realms available for the given account auth
+        """
+
         return self.api.get("/worlds")
 
 
     def realm_info(self, realm_id):
+        """
+        Information about a specific realm by ID
+        """
+
         return self.api.get("/worlds/%i" % realm_id)
 
 
     def realm_join(self, realm_id):
+        """
+        Attempt to add the given account to the realm by ID
+        """
+
         return self.api.get("/worlds/%i/join" % realm_id)
 
 
     def realm_backups(self, realm_id):
+        """
+        Show the backups available for the given realm ID
+        """
+
         return self.api.get("/worlds/%i/backups" % realm_id)
 
 
     def realm_world_url(self, realm_id, world):
+        """
+        Show the download URL for the latest world backup for the given
+        realm ID
+        """
+
         return self.api.get("/worlds/%i/slot/%i/download" % (realm_id, world))
 
 

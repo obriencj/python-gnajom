@@ -30,10 +30,9 @@ from requests.cookies import RequestsCookieJar
 from requests.exceptions import HTTPError
 from uuid import uuid1
 
-import sys
 
-
-__all__ = ( "ApiObject", "Authentication", "generate_clientToken",
+__all__ = ( "ApiHelper", "Authentication",
+            "auth_from_file", "generate_clientToken",
             "HOST_YGGDRASIL", "DEFAULT_AUTH_HOST",
             "MINECRAFT_AGENT_V1" )
 
@@ -48,9 +47,9 @@ MINECRAFT_AGENT_V1 = {
 }
 
 
-class ApiObject(object):
+class ApiHelper(object):
     """
-    Lightweight wrapper for JSON via POST
+    Lightweight wrapper for JSON via GET and POST calls
     """
 
     def __init__(self, hosturi):
@@ -93,7 +92,7 @@ class Authentication(object):
     def __init__(self, username, clientToken=None, accessToken=None,
                  host=HOST_YGGDRASIL, agent=MINECRAFT_AGENT_V1):
 
-        self.api = ApiObject(host)
+        self.api = ApiHelper(host)
         self.username = username
         self.user = None
         self.agent = agent
@@ -103,6 +102,10 @@ class Authentication(object):
 
 
     def authenticate(self, password):
+        """
+        generate an accessToken for this session
+        """
+
         payload = { "username": self.username,
                     "password": password,
                     "requestUser": True }
@@ -122,6 +125,11 @@ class Authentication(object):
 
 
     def refresh(self):
+        """
+        ensure that this session remains valid. May result in a new
+        accessToken.
+        """
+
         payload = { "accessToken": self.accessToken,
                     "clientToken": self.clientToken,
                     "requestUser": True }
@@ -135,12 +143,22 @@ class Authentication(object):
 
 
     def validate(self):
+        """
+        check that the session is currently valid, and can be used to
+        perform other actions. An invalid session will need to be
+        renewed or a full re-auth may be required.
+        """
+
         payload = { "accessToken": self.accessToken, }
 
         ret = self.api.post("/validate", payload)
 
 
     def signout(self, password):
+        """
+        invalidates all sessions against the specified account
+        """
+
         payload = { "username": self.username,
                     "password": password, }
 
@@ -148,6 +166,10 @@ class Authentication(object):
 
 
     def invalidate(self):
+        """
+        invalidates the current session
+        """
+
         payload = { "accessToken": self.accessToken,
                     "clientToken": self.clientToken, }
 
@@ -155,18 +177,43 @@ class Authentication(object):
 
 
     def load(self, filename):
+        """
+        set the state of this session to the what is represented in the
+        JSON data stored in filename
+        """
+
         with open(filename) as fd:
             session = load(fd)
+
+        if "host" in session:
+            host = session.pop("host")
+            self.api = ApiHelper(host)
 
         self.__dict__.update(session)
 
 
     def save(self, filename):
+        """
+        save the state of this session to JSON data and write it to
+        filename
+        """
+
         session = dict(self.__dict__)
+        session["host"] = self.api._host
         del session["api"]
 
         with open(filename, "w") as fd:
             dump(session, fd)
+
+
+def auth_from_file(filename):
+    """
+    return an Authentication instance loaded from a file
+    """
+
+    auth = Authentication(None)
+    auth.load(filename)
+    return auth
 
 
 def generate_clientToken():
