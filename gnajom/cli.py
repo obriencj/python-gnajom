@@ -157,16 +157,11 @@ def cli_command_auth_refresh(options):
         print "No session data"
         return -1
 
-    if options.force:
+    if options.force or not auth.validate():
         auth.refresh()
-        return 0
+        save_auth(options.auth)
 
-    else:
-        try:
-            auth.validate()
-        except:
-            auth.refresh()
-        return 0
+    return 0
 
 
 def cli_subparser_auth_refresh(parent):
