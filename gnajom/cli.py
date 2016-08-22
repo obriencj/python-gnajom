@@ -254,6 +254,82 @@ def cli_subparser_auth_signout(parent):
                    help="Mojang authentication host")
 
 
+_SENSITIVE_MARKERS = ("access", "token", "key", "pass")
+
+
+def _hide_sensitive(prop):
+    name = prop["name"].lower()
+    for mark in _SENSITIVE_MARKERS:
+        if mark in name:
+            prop = dict(prop)
+            prop["value"] = "HIDDEN"
+            break
+    return prop
+
+
+def _filter_sensitive(proplist):
+    return [_hide_sensitive(prop) for prop in proplist]
+
+
+def cli_command_auth_show(options):
+    """
+    cli: gnajom auth show
+    """
+
+    auth = options.auth
+
+    if options.json:
+        show = dict(auth.__dict__)
+        show["host"] = auth.api._host
+        del show["api"]
+
+        if not options.unsafe:
+            show["accessToken"] = "HIDDEN"
+
+            props = show["user"]["properties"]
+            show["user"]["properties"] = _filter_sensitive(props)
+
+        pretty(show)
+
+    else:
+        hide = lambda x: x if options.unsafe else "HIDDEN"
+
+        print "Session file: %s" % options.session_file
+        print "  auth_host:", auth.api._host
+        print "  username:", auth.username
+        print "  id:", auth.user["id"]
+        print "  clientToken:", auth.clientToken
+        print "  accessToken:", hide(auth.accessToken)
+        print "  selectedProfile:"
+        print "    name:", auth.selectedProfile["name"]
+        print "    id:",  auth.selectedProfile["id"]
+        print "  agent:"
+        print "    name:", auth.agent["name"]
+        print "    version:", auth.agent["version"]
+
+        props = auth.user["properties"]
+        if props:
+            print "  properties:"
+
+            if not options.unsafe:
+                props = _filter_sensitive(props)
+
+            for p in props:
+                print "    %s: %s" % (p["name"], p["value"])
+
+    return 0
+
+
+def cli_subparser_auth_show(parent):
+    p = subparser(parent, "show", cli_command_auth_show)
+
+    p.add_argument("--unsafe", action="store_true",
+                   help="Print values which are not safe to share")
+
+    p.add_argument("--json", action="store_true",
+                   help="Pretty-print data as JSON. Honors --unsafe")
+
+
 def cli_subparser_auth(parent):
     p = subparser(parent, "auth")
 
@@ -262,6 +338,7 @@ def cli_subparser_auth(parent):
     cli_subparser_auth_refresh(p)
     cli_subparser_auth_invalidate(p)
     cli_subparser_auth_signout(p)
+    cli_subparser_auth_show(p)
 
 
 # --- gnajom realms commands ---
