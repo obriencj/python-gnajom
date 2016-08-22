@@ -80,6 +80,8 @@ class Authentication(object):
         self.selectedProfile = ret.get("selectedProfile")
         self.user = ret.get("user")
 
+        return True
+
 
     def refresh(self):
         """
@@ -145,6 +147,8 @@ class Authentication(object):
                     "clientToken": self.clientToken, }
 
         ret = self.api.post("/invalidate", payload)
+
+        self.accessToken = None
         return True
 
 
