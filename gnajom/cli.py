@@ -258,18 +258,14 @@ def cli_subparser_auth_signout(parent):
 _SENSITIVE_MARKERS = ("access", "token", "key", "pass")
 
 
-def _hide_sensitive(prop):
+def _hide_sensitive(prop, markers=_SENSITIVE_MARKERS):
     name = prop["name"].lower()
-    for mark in _SENSITIVE_MARKERS:
-        if mark in name:
-            prop = dict(prop)
-            prop["value"] = "HIDDEN"
-            break
-    return prop
-
-
-def _filter_sensitive(proplist):
-    return [_hide_sensitive(prop) for prop in proplist]
+    check = name.lower()
+    for mark in markers:
+        if mark in check:
+            return {"name": name, "value": "HIDDEN"}
+    else:
+        return prop
 
 
 def cli_command_auth_show(options):
@@ -288,7 +284,8 @@ def cli_command_auth_show(options):
             show["accessToken"] = "HIDDEN"
 
             props = show["user"]["properties"]
-            show["user"]["properties"] = _filter_sensitive(props)
+            props = [_hide_sensitive(prop) for prop in props]
+            show["user"]["properties"] = props
 
         pretty(show)
 
@@ -313,7 +310,7 @@ def cli_command_auth_show(options):
             print "  properties:"
 
             if not options.unsafe:
-                props = _filter_sensitive(props)
+                props = (_hide_sensitive(prop) for prop in props)
 
             for p in props:
                 print "    %s: %s" % (p["name"], p["value"])
@@ -325,10 +322,10 @@ def cli_subparser_auth_show(parent):
     p = subparser(parent, "show", cli_command_auth_show)
 
     p.add_argument("--unsafe", action="store_true",
-                   help="Print values which are not safe to share")
+                   help="Output values which are not safe to share")
 
     p.add_argument("--json", action="store_true",
-                   help="Pretty-print data as JSON. Honors --unsafe")
+                   help="Output data as JSON. Honors --unsafe")
 
 
 def cli_subparser_auth(parent):
