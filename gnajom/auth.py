@@ -18,6 +18,7 @@ authentication system.
 
 
 from json import dump, load
+from requests.exceptions import HTTPError
 from uuid import uuid1
 
 from gnajom import APIHost
@@ -73,14 +74,26 @@ class Authentication(object):
         if self.clientToken:
             payload["clientToken"] = self.clientToken
 
-        ret = self.api.post("/authenticate", payload)
+        try:
+            ret = self.api.post("/authenticate", payload)
 
-        self.clientToken = ret["clientToken"]
-        self.accessToken = ret["accessToken"]
-        self.selectedProfile = ret.get("selectedProfile")
-        self.user = ret.get("user")
+        except HTTPError as err:
+            # if it's just a 403, that means the auth was wrong, so
+            # it's simple failure. Any other kind of error is a
+            # different kind of problem, so we'll propagate it up.
 
-        return True
+            if err.errno == 403:
+                return False
+            else:
+                raise
+
+        else:
+            self.clientToken = ret["clientToken"]
+            self.accessToken = ret["accessToken"]
+            self.selectedProfile = ret.get("selectedProfile")
+            self.user = ret.get("user")
+
+            return True
 
 
     def refresh(self):
@@ -93,14 +106,27 @@ class Authentication(object):
                     "clientToken": self.clientToken,
                     "requestUser": True }
 
-        ret = self.api.post("/refresh", payload)
+        try:
+            ret = self.api.post("/refresh", payload)
 
-        self.clientToken = ret["clientToken"]
-        self.accessToken = ret["accessToken"]
-        self.selectedProfile = ret.get("selectedProfile")
-        self.user = ret.get("user")
+        except HTTPError as err:
+            # a 403 just means the session was completely invalid,
+            # which is expected behavior in many circumstances. In
+            # that case, we just return False. Any other error gets
+            # propagated up.
 
-        return True
+            if err.errno == 403:
+                return False
+            else:
+                raise
+
+        else:
+            self.clientToken = ret["clientToken"]
+            self.accessToken = ret["accessToken"]
+            self.selectedProfile = ret.get("selectedProfile")
+            self.user = ret.get("user")
+
+            return True
 
 
     def validate(self):
@@ -117,8 +143,16 @@ class Authentication(object):
 
         try:
             ret = self.api.post("/validate", payload)
-        except:
-            return False
+
+        except HTTPError as err:
+            # one again, 403 is an expected possibility. Everything
+            # else is wonky.
+
+            if err.errno == 403:
+                return False
+            else:
+                raise
+
         else:
             return True
 
@@ -131,8 +165,18 @@ class Authentication(object):
         payload = { "username": self.username,
                     "password": password, }
 
-        ret = self.api.post("/signout", payload)
-        return True
+        try:
+            ret = self.api.post("/signout", payload)
+
+        except HTTPError as err:
+            # 403 means bad username/password in this case
+            if err.errno == 403:
+                return False
+            else:
+                raise
+
+        else:
+            return True
 
 
     def invalidate(self):
@@ -146,6 +190,8 @@ class Authentication(object):
         payload = { "accessToken": self.accessToken,
                     "clientToken": self.clientToken, }
 
+        # even if we're already invalidated, this won't raise an
+        # HTTPError, so we won't try to filter out a 403
         ret = self.api.post("/invalidate", payload)
 
         self.accessToken = None
