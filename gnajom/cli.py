@@ -325,6 +325,11 @@ def cli_subparser_realm_list(parent):
                    help="print as formatted JSON")
 
 
+_REALM_INFO_KEYS = ("state", "ip", "maxPlayers", "worldType", "activeSlot",
+                    "expired", "daysLeft", "minigameId", "minigameName",
+                    "resourcePackUrl", "resourcePackHash")
+
+
 def cli_command_realm_info(options):
     """
     cli: gnajom realm info
@@ -342,10 +347,9 @@ def cli_command_realm_info(options):
     if info["motd"]:
         print "  MotD:", info["motd"]
 
-    print "  Settings:"
-    print "    maxPlayers:", info["maxPlayers"]
-    print "    worldType:", info["worldType"]
-    print "    activeSlot:", info["activeSlot"]
+    print "  Info:"
+    for k in _REALM_INFO_KEYS:
+        print "    %s: %s" % (k, info[k])
 
     print "  World slots:"
     slots = info["slots"]
@@ -353,7 +357,7 @@ def cli_command_realm_info(options):
         print "    Slot %i:" % slot["slotId"]
         slot = loads(slot["options"])
         for k,v in sorted(slot.items()):
-            print "      %s: %r" % (k, v)
+            print "      %s: %s" % (k, v)
 
     player_count = 0
     player_online = 0
