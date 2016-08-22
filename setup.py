@@ -40,7 +40,7 @@ setup(name = "gnajom",
       description = "Module and command line tools for working with"
       " Mojang's public APIs",
 
-      provides = [ "gnajom", "gnajom-cli" ],
+      provides = [ "gnajom" ],
       requires = [ "setuptools", "requests" ],
 
       zip_safe = True,
