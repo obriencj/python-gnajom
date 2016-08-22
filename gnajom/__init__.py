@@ -39,11 +39,18 @@ class ApiHelper(object):
     """
 
     def __init__(self, hosturi):
+
+        # if an empty hosturi has gotten this far in the API,
+        # something is screwed up.
+        assert(hosturi)
+
         self._host = hosturi
         self.cookies = RequestsCookieJar()
 
 
     def get(self, endpoint):
+        assert(endpoint)
+
         resp = get(self._host + endpoint, cookies=self.cookies)
 
         resp.raise_for_status()
@@ -55,6 +62,8 @@ class ApiHelper(object):
 
 
     def post(self, endpoint, payload):
+        assert(endpoint)
+
         data = dumps(payload)
         resp = post(self._host + endpoint, data, cookies=self.cookies)
 
