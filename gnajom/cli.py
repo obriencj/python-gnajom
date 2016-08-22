@@ -15,12 +15,17 @@
 
 """
 gnajom.cli - Module with command-line features for gnajom.
-Provides access to various aspects of the APIs via a nested
-sub-command system.
+Provides access to various aspects of the APIs via a nested command
+system.
 
 :author: Christopher O'Brien <obriencj@gmail.com>
 :license: LGPL v3
 """
+
+
+# Note that this is by far the largest module in this package,
+# primarily because it has to act as the front-end between human-input
+# and human-readable output.
 
 
 import requests
@@ -28,6 +33,7 @@ import sys
 
 from argparse import ArgumentParser
 from getpass import getpass
+from json import dump, loads
 from os import chmod, makedirs
 from os.path import basename, exists, expanduser, split
 from ConfigParser import SafeConfigParser
@@ -48,6 +54,19 @@ DEFAULTS = {
     "realms_host": DEFAULT_REALMS_HOST,
     "realms_version": DEFAULT_REALMS_VERSION,
 }
+
+
+class SessionInvalid(Exception):
+    pass
+
+
+def pretty(obj, out=sys.stdout):
+    """
+    utility for dumping json pretty-printed, usually when the --json
+    option is passed to a command
+    """
+
+    dump(obj, out, indent=4, separators=(', ', ': '), sort_keys=True)
 
 
 # --- gnajom auth commands ---
@@ -75,27 +94,26 @@ def save_auth(options, auth):
 
 
 def cli_command_auth_connect(options):
+    """
+    cli: gnajom auth connect
+    """
+
     auth = options.auth
 
     if options.refresh and auth.accessToken:
         # user requested we try to reuse the existing session if
         # possible.
+
         if auth.validate():
             # hey it still works, great, we're done here.
             return 0
-        else:
-            # well it isn't still valid, let's see if we can refresh
-            # it instead.
-            try:
-                auth.refresh()
-            except:
-                # nope, refresh failed, fall through to normal full
-                # authentication call
-                pass
-            else:
-                # refresh worked, we're done here.
-                save_auth(options, auth)
-                return 0
+
+        elif auth.refresh():
+            # it wasn't valid, but we were able to refresh it, so
+            # we're good to go. Make sure we save out updated
+            # accessToken to the session file.
+            save_auth(options, auth)
+            return 0
 
     password = options.password or \
                getpass("password for %s: " % auth.username)
@@ -110,10 +128,13 @@ def cli_command_auth_connect(options):
         # generate one.
         auth.ensureClientToken()
 
-    auth.authenticate(password)
+    if auth.authenticate(password):
+        save_auth(options, auth)
+        return 0
 
-    save_auth(options, auth)
-    return 0
+    else:
+        print >> sys.stderr, "Error: Bad username or password"
+        return 1
 
 
 def cli_subparser_auth_connect(parent):
@@ -136,6 +157,10 @@ def cli_subparser_auth_connect(parent):
 
 
 def cli_command_auth_validate(options):
+    """
+    cli: gnajom auth validate
+    """
+
     auth = options.auth
 
     if auth.validate():
@@ -151,6 +176,10 @@ def cli_subparser_auth_validate(parent):
 
 
 def cli_command_auth_refresh(options):
+    """
+    cli: gnajom auth refresh
+    """
+
     auth = options.auth
 
     if not auth.accessToken:
@@ -158,10 +187,16 @@ def cli_command_auth_refresh(options):
         return -1
 
     if options.force or not auth.validate():
-        auth.refresh()
-        save_auth(options.auth)
-
-    return 0
+        if auth.refresh():
+            save_auth(options.auth)
+            return 0
+        else:
+            print >> sys.stderr, "Could not refresh session."
+            return 1
+    else:
+        # we weren't told to force refresh, and the session is still
+        # valid, so we're happy with the way things are.
+        return 0
 
 
 def cli_subparser_auth_refresh(parent):
@@ -172,6 +207,10 @@ def cli_subparser_auth_refresh(parent):
 
 
 def cli_command_auth_invalidate(options):
+    """
+    cli: gnajom auth invalidate
+    """
+
     auth = options.auth
 
     if not auth.accessToken:
@@ -188,6 +227,10 @@ def cli_subparser_auth_invalidate(parent):
 
 
 def cli_command_auth_signout(options):
+    """
+    cli: gnajom auth signout
+    """
+
     # use a clean Authentication rather than a loaded session
     auth = Authentication(options.user, host=options.auth_host)
 
@@ -224,42 +267,93 @@ def cli_subparser_auth(parent):
 # --- gnajom realms commands ---
 
 
-def load_api(options):
+_REALM_LIST_FMT = "[id: {id}] {name} (owner: {owner})"
+
+
+def realms_api(options):
+    """
+    Fetch a RealmsAPI instance configured with our current session.
+    Verify that the current session is available for use -- if not
+    trigger an exception that will notify the CLI user that they need
+    to log in before proceeding.
+    """
+
     auth = options.auth
-    auth.validate()
-    return RealmsAPI(auth, options.realms_host, options.realms_version)
+    if auth.validate():
+        return RealmsAPI(auth, options.realms_host, options.realms_version)
+    else:
+        raise SessionInvalid()
 
 
 def cli_command_realm_list(options):
-    api = load_api(options)
-    print api.realm_list()
+    """
+    cli: gnajom realm list
+    """
+
+    api = realms_api(options)
+    data = api.realm_list()
+
+    if options.json:
+        pretty(data)
+        return 0
+
+    servers = data["servers"]
+    for server in sorted(servers, key=lambda d:d["id"]):
+        print _REALM_LIST_FMT.format(**server)
+        if options.motd and server.get("motd"):
+            print "  MotD: %s" % server["motd"]
+
+        if options.players:
+            players = server["players"] or tuple()
+            print "  %i players online" % len(players)
+            if players:
+                print "    \n".join(sorted(players))
+
     return 0
 
 
 def cli_subparser_realm_list(parent):
     p = subparser(parent, "list", cli_command_realm_list)
 
+    p.add_argument("--players", action="store_true", default=False,
+                   help="Show online players")
+
+    p.add_argument("--motd", action="store_true", default=False,
+                   help="Show message of the day")
+
+    p.add_argument("--json", action="store_true",
+                   help="print as formatted JSON")
+
 
 def cli_command_realm_info(options):
-    api = load_api(options)
+    """
+    cli: gnajom realm info
+    """
+
+    api = realms_api(options)
 
     info = api.realm_info(options.realm_id)
 
-    print "Realm %i: %s" % (info["id"], info["name"])
+    if options.json:
+        pretty(info)
+        return 0
 
-    print "  Owner:", info["owner"]
-
+    print _REALM_LIST_FMT.format(**info)
     if info["motd"]:
-        print "  Message:", info["motd"]
+        print "  MotD:", info["motd"]
 
-    print "  Options:"
+    print "  Settings:"
     print "    maxPlayers:", info["maxPlayers"]
     print "    worldType:", info["worldType"]
+    print "    activeSlot:", info["activeSlot"]
 
-    #io = info["options"]
-    #print "    PvP: %{pvp}r" % io
-    #print "    spawnProtection: %{spawnProtection}i" % io
-    #print "    commandBlocks: %{commandBlocks}" % io
+    print "  World slots:"
+    slots = info["slots"]
+    for slot in sorted(slots, key=lambda s:s["slotId"]):
+        print "    Slot %i:" % slot["slotId"]
+        slot = loads(slot["options"])
+        for k,v in sorted(slot.items()):
+            print "      %s: %r" % (k, v)
 
     player_count = 0
     player_online = 0
@@ -285,9 +379,16 @@ def cli_subparser_realm_info(parent):
 
     p.add_argument("realm_id", action="store", type=int)
 
+    p.add_argument("--json", action="store_true",
+                   help="print as formatted JSON")
+
 
 def cli_command_realm_backups(options):
-    api = load_api(options)
+    """
+    cli: gnajom realm backups
+    """
+
+    api = realms_api(options)
     print api.realm_backups(options.realm_id)
     return 0
 
@@ -299,7 +400,11 @@ def cli_subparser_realm_backups(parent):
 
 
 def cli_command_realm_download(options):
-    api = load_api(options)
+    """
+    cli: gnajom realm download
+    """
+
+    api = realms_api(options)
 
     url = api.realm_world_url(options.realm_id, options.world_number)
     dl = url.get("downloadLink")
@@ -373,7 +478,10 @@ def subparser(parser, name, cli_func=None, help=None):
     return sp
 
 
-def cli_argparser(argv):
+def cli_argparser(argv=None):
+
+    argv = sys.argv if argv is None else argv
+
     # eat the --config option if one exists and use it to pre-populate
     # option values for a real option parse afterwards.
     parser = ArgumentParser(add_help=False)
@@ -411,7 +519,7 @@ def main(argv=None):
     Primary CLI entry-point.
     """
 
-    argv = argv or sys.argv
+    argv = sys.argv if argv is None else argv
 
     # argparse does silly things. It treats argv[0] special ONLY when
     # argv is not passed to parse_args explicitly. If passed
@@ -419,12 +527,19 @@ def main(argv=None):
     # rather than the command name.
 
     try:
-        options = cli_argparser(argv).parse_args(argv[1:])
+        parser = cli_argparser(argv)
+        options = parser.parse_args(argv[1:])
         options.auth = load_auth(options)
 
         # cli_func is defined as a default value for each individual
         # subcommand parser.
         return options.cli_func(options) or 0
+
+    except SessionInvalid:
+        print >> sys.stderr, \
+            "Current session invalid. Try running" \
+            " `gnajom auth connect --refresh`"
+        return 1
 
     except KeyboardInterrupt:
         print >> sys.stderr
