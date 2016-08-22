@@ -17,13 +17,14 @@ authentication system.
 """
 
 
+from json import dump, load
 from uuid import uuid1
+
 from gnajom import APIHost
 
 
 __all__ = ( "Authentication", "auth_from_file", "generate_clientToken",
             "HOST_YGGDRASIL", "DEFAULT_AUTH_HOST", "MINECRAFT_AGENT_V1" )
-
 
 
 HOST_YGGDRASIL = "https://authserver.mojang.com"
@@ -97,6 +98,8 @@ class Authentication(object):
         self.selectedProfile = ret.get("selectedProfile")
         self.user = ret.get("user")
 
+        return True
+
 
     def validate(self):
         """
@@ -105,9 +108,17 @@ class Authentication(object):
         renewed or a full re-auth may be required.
         """
 
+        if not self.accessToken:
+            return False
+
         payload = { "accessToken": self.accessToken, }
 
-        ret = self.api.post("/validate", payload)
+        try:
+            ret = self.api.post("/validate", payload)
+        except:
+            return False
+        else:
+            return True
 
 
     def signout(self, password):
@@ -119,6 +130,7 @@ class Authentication(object):
                     "password": password, }
 
         ret = self.api.post("/signout", payload)
+        return True
 
 
     def invalidate(self):
@@ -126,16 +138,21 @@ class Authentication(object):
         invalidates the current session
         """
 
+        if not self.accessToken:
+            return None
+
         payload = { "accessToken": self.accessToken,
                     "clientToken": self.clientToken, }
 
         ret = self.api.post("/invalidate", payload)
+        return True
 
 
     def load(self, filename):
         """
         set the state of this session to the what is represented in the
-        JSON data stored in filename
+        JSON data stored in filename. Errors (access, malformed JSON,
+        etc) while loading will be propagated.
         """
 
         with open(filename) as fd:
@@ -162,6 +179,16 @@ class Authentication(object):
             dump(session, fd)
 
 
+    def ensureClientToken(self):
+        """
+        generate a clientToken for this session if one doesn't already
+        exist
+        """
+
+        if not self.clientToken:
+            self.clientToken = generate_clientToken()
+
+
 def auth_from_file(filename):
     """
     return an Authentication instance loaded from a file
@@ -177,7 +204,7 @@ def generate_clientToken():
     Generate a random clientToken string via UUID
     """
 
-    return uuid.uuid1().bytes.encode("hex")
+    return uuid1().bytes.encode("hex")
 
 
 #
