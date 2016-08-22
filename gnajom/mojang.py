@@ -52,7 +52,6 @@ class MojangAPI(object):
         return self.api.post("/profiles/minecraft", list(playernames))
 
 
-
 class SessionAPI(object):
     """
     A thin wrapper for the the session portion of the Mojang API
