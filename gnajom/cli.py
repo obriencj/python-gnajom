@@ -28,7 +28,7 @@ import sys
 
 from argparse import ArgumentParser
 from getpass import getpass
-from os import makedirs
+from os import chmod, makedirs
 from os.path import basename, exists, expanduser, split
 from ConfigParser import SafeConfigParser
 
@@ -78,19 +78,39 @@ def cli_command_auth_connect(options):
     auth = options.auth
 
     if options.refresh and auth.accessToken:
-        #verbose("using existing session data")
-        try:
-            auth.validate()
-            #verbose("session is valid")
-        except:
-            #verbose("session is invalid")
-            auth.refresh()
-            #verbose("session refreshed")
+        # user requested we try to reuse the existing session if
+        # possible.
+        if auth.validate():
+            # hey it still works, great, we're done here.
+            return 0
+        else:
+            # well it isn't still valid, let's see if we can refresh
+            # it instead.
+            try:
+                auth.refresh()
+            except:
+                # nope, refresh failed, fall through to normal full
+                # authentication call
+                pass
+            else:
+                # refresh worked, we're done here.
+                save_auth(options, auth)
+                return 0
 
-    else:
-        password = options.password or \
-                   getpass("password for %s: " % auth.username)
-        auth.authenticate(password)
+    password = options.password or \
+               getpass("password for %s: " % auth.username)
+
+    if options.request_client_token:
+        # we have explicitly been told to have the server give us
+        # a token, even if we had one saved.
+        auth.clientToken = None
+
+    elif not auth.clientToken:
+        # otherwise, if we don't have a token already we'd better
+        # generate one.
+        auth.ensureClientToken()
+
+    auth.authenticate(password)
 
     save_auth(options, auth)
     return 0
@@ -108,22 +128,19 @@ def cli_subparser_auth_connect(parent):
     p.add_argument("--password", action="store",
                    help="Mojang password")
 
+    p.add_argument("--request-client-token", action="store_true",
+                   help="Request that the server provide a client token")
+
 
 def cli_command_auth_validate(options):
     auth = options.auth
 
-    if not auth.accessToken:
-        print "No session data"
-        return -1
-
-    try:
-        auth.validate()
-    except:
-        print "Session is no longer valid"
-        return -1
-    else:
+    if auth.validate():
         print "Session is valid"
         return 0
+    else:
+        print "Session is no longer valid"
+        return -1
 
 
 def cli_subparser_auth_validate(parent):
@@ -392,6 +409,10 @@ def cli_argparser(argv):
 
 
 def main(argv=None):
+    """
+    Primary CLI entry-point.
+    """
+
     argv = argv or sys.argv
 
     # argparse does silly things. It treats argv[0] special ONLY when
