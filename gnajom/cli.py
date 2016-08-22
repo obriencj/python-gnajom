@@ -67,6 +67,7 @@ def pretty(obj, out=sys.stdout):
     """
 
     dump(obj, out, indent=4, separators=(', ', ': '), sort_keys=True)
+    print >> out
 
 
 # --- gnajom auth commands ---
