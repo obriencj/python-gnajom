@@ -18,7 +18,7 @@ authentication system.
 
 
 from uuid import uuid1
-from gnajom import ApiHelper
+from gnajom import APIHost
 
 
 __all__ = ( "Authentication", "auth_from_file", "generate_clientToken",
@@ -48,7 +48,7 @@ class Authentication(object):
     def __init__(self, username, clientToken=None, accessToken=None,
                  host=HOST_YGGDRASIL, agent=MINECRAFT_AGENT_V1):
 
-        self.api = ApiHelper(host)
+        self.api = APIHost(host)
         self.username = username
         self.user = None
         self.agent = agent
@@ -143,7 +143,7 @@ class Authentication(object):
 
         if "host" in session:
             host = session.pop("host")
-            self.api = ApiHelper(host)
+            self.api = APIHost(host)
 
         self.__dict__.update(session)
 

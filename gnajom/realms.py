@@ -21,7 +21,7 @@ gnajom.realms - Python module for working with Realms servers.
 """
 
 
-from gnajom import ApiHelper
+from gnajom import APIHost
 
 
 __all__ = ( "RealmsAPI",
@@ -53,7 +53,7 @@ class RealmsAPI(object):
         sid =  "token:%s:%s" % (auth.accessToken, auth.selectedProfile["id"])
         user = auth.selectedProfile["name"]
 
-        self.api = ApiHelper(host)
+        self.api = APIHost(host)
         self.api.cookies.set("sid", sid)
         self.api.cookies.set("user", user)
         self.api.cookies.set("version", version)

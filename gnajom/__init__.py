@@ -27,13 +27,12 @@ sevirces such as auth, realms, and users.
 from json import load, dump, dumps
 from requests import get, post
 from requests.cookies import RequestsCookieJar
-from requests.exceptions import HTTPError
 
 
-__all__ = ( "ApiHelper", )
+__all__ = ( "APIHost", )
 
 
-class ApiHelper(object):
+class APIHost(object):
     """
     Lightweight wrapper for JSON via GET and POST calls
     """
@@ -49,6 +48,11 @@ class ApiHelper(object):
 
 
     def get(self, endpoint):
+        """
+        Trigger an API endpoint on the host via an HTTP GET. Any JSON
+        results will be parsed and returned.
+        """
+
         assert(endpoint)
 
         resp = get(self._host + endpoint, cookies=self.cookies)
@@ -61,7 +65,31 @@ class ApiHelper(object):
             return None
 
 
+    def delete(self, endpoint):
+        """
+        Trigger an API endpoint on the host via an HTTP DELETE. Any JSON
+        results will be parsed and returned.
+        """
+
+        assert(endpoint)
+
+        resp = delete(self._host + endpoint, cookies=self.cookies)
+
+        resp.raise_for_status()
+
+        if len(resp.content):
+            return resp.json()
+        else:
+            return None
+
+
     def post(self, endpoint, payload):
+        """
+        Trigger an API endpoint on the host via an HTTP POST, sending
+        payload represented as a JSON. Any JSON results will be parsed
+        and returned.
+        """
+
         assert(endpoint)
 
         data = dumps(payload)
