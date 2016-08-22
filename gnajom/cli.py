@@ -131,6 +131,9 @@ def cli_subparser_auth_connect(parent):
     p.add_argument("--request-client-token", action="store_true",
                    help="Request that the server provide a client token")
 
+    p.add_argument("--auth-host", action="store",
+                   help="Mojang authentication host")
+
 
 def cli_command_auth_validate(options):
     auth = options.auth
@@ -181,7 +184,6 @@ def cli_command_auth_invalidate(options):
         return -1
     else:
         auth.invalidate()
-        auth.accessToken = None
         save_auth(options, auth)
         return 0
 
@@ -191,6 +193,7 @@ def cli_subparser_auth_invalidate(parent):
 
 
 def cli_command_auth_signout(options):
+    # use a clean Authentication rather than a loaded session
     auth = Authentication(options.user, host=options.auth_host)
 
     password = options.password or \
@@ -209,12 +212,12 @@ def cli_subparser_auth_signout(parent):
     p.add_argument("--password", action="store",
                    help="Mojang password")
 
+    p.add_argument("--auth-host", action="store",
+                   help="Mojang authentication host")
+
 
 def cli_subparser_auth(parent):
     p = subparser(parent, "auth")
-
-    p.add_argument("--auth-host", action="store",
-                   help="Mojang authentication host")
 
     cli_subparser_auth_connect(p)
     cli_subparser_auth_validate(p)
