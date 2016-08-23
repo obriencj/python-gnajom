@@ -28,7 +28,6 @@ system.
 # and human-readable output.
 
 
-import requests
 import sys
 
 from argparse import ArgumentParser
@@ -36,10 +35,17 @@ from getpass import getpass
 from json import dump, loads
 from os import chmod, makedirs
 from os.path import basename, exists, expanduser, split
+from requests import get
+from requests.exceptions import HTTPError
 from ConfigParser import SafeConfigParser
 
-from .auth import Authentication, DEFAULT_AUTH_HOST
+from .auth import Authentication, DEFAULT_AUTH_HOST, HOST_YGGDRASIL
+
 from .realms import RealmsAPI, DEFAULT_REALMS_HOST, DEFAULT_REALMS_VERSION
+
+from .mojang import (MojangAPI, SessionAPI, StatusAPI,
+                     DEFAULT_MOJANG_API_HOST, DEFAULT_MOJANG_SESSION_HOST,
+                     DEFAULT_MOJANG_STATUS_HOST)
 
 
 DEFAULT_CONFIG_FILE = expanduser("~/.gnajom/gnajom.conf")
@@ -53,6 +59,9 @@ DEFAULTS = {
     "auth_host": DEFAULT_AUTH_HOST,
     "realms_host": DEFAULT_REALMS_HOST,
     "realms_version": DEFAULT_REALMS_VERSION,
+    "api_host": DEFAULT_MOJANG_API_HOST,
+    "session_host": DEFAULT_MOJANG_SESSION_HOST,
+    "status_host": DEFAULT_MOJANG_STATUS_HOST,
 }
 
 
@@ -534,6 +543,57 @@ def cli_subparser_realms(parent):
     cli_subparser_realm_download(p)
 
 
+# --- mojang core public API ---
+
+
+_SERVICE_NAMES = {
+    "account.mojang.com": "Mojang accounts website",
+    "api.mojang.com": "Mojang Public API",
+    "auth.mojang.com": "Mojang authentication (Legacy)",
+    "authserver.mojang.com": "Mojang authentication (Yggdrasil)",
+    "mcoapi.minecraft.net": "Minecraft Realms",
+    "minecraft.net": "Minecraft website",
+    "mojang.com": "Mojang website",
+    "peoapi.minecraft.net": "Pocked Edition Realms",
+    "session.minecraft.net": "Minecraft sessions (Legacy)",
+    "sessionserver.mojang.com": "Multiplayer sessions",
+    "skins.minecraft.net": "Minecraft skins",
+    "status.mojang.com": "Status API",
+    "textures.minecraft.net": "Minecraft textures",
+}
+
+
+def cli_command_status(options):
+    """
+    cli: gnajom status
+    """
+
+    api = StatusAPI(None, host=options.status_host)
+    stat = api.check()
+
+    if options.json:
+        pretty(stat)
+
+    else:
+        print "Services:"
+        for s in stat:
+            for k, v in s.iteritems():
+                k = _SERVICE_NAMES.get(k, k)
+                print "  %s: %s" % (k, v)
+
+    return 0
+
+
+def cli_subparser_status(parent):
+    p = subparser(parent, "status", cli_command_status)
+
+    p.add_argument("--mojang-status-host", action="store",
+                   help="host to access for status API calls")
+
+    p.add_argument("--json", action="store_true",
+                   help="print as formatted JSON")
+
+
 # --- CLI setup and entry point ---
 
 
@@ -590,6 +650,10 @@ def cli_argparser(argv=None):
     cli_subparser_auth(parser)
     cli_subparser_realms(parser)
 
+    cli_subparser_status(parser)
+    #cli_subparser_user(parser)
+    #cli_subparser_profile(parser)
+
     return parser
 
 
@@ -611,7 +675,7 @@ def main(argv=None):
         options.auth = load_auth(options)
 
         # cli_func is defined as a default value for each individual
-        # subcommand parser.
+        # subcommand parser, see subparser()
         return options.cli_func(options) or 0
 
     except SessionInvalid:
@@ -619,6 +683,17 @@ def main(argv=None):
             "Current session invalid. Try running" \
             " `gnajom auth connect --refresh`"
         return 1
+
+    except HTTPError as http_err:
+        if http_err.errno == 429:
+            # this is a somewhat expected occurance, so we want to
+            # handle it more gracefully than with a backtrace.
+            print >> sys.stderr, http_err
+            return 1
+
+        else:
+            # all other HTTP errors get propagated just in case
+            raise
 
     except KeyboardInterrupt:
         print >> sys.stderr
