@@ -82,7 +82,7 @@ class Authentication(object):
             # it's simple failure. Any other kind of error is a
             # different kind of problem, so we'll propagate it up.
 
-            if err.errno == 403:
+            if err.response.status_code == 403:
                 return False
             else:
                 raise
@@ -115,7 +115,7 @@ class Authentication(object):
             # that case, we just return False. Any other error gets
             # propagated up.
 
-            if err.errno == 403:
+            if err.response.status_code == 403:
                 return False
             else:
                 raise
@@ -148,7 +148,7 @@ class Authentication(object):
             # one again, 403 is an expected possibility. Everything
             # else is wonky.
 
-            if err.errno == 403:
+            if err.response.status_code == 403:
                 return False
             else:
                 raise
@@ -170,7 +170,7 @@ class Authentication(object):
 
         except HTTPError as err:
             # 403 means bad username/password in this case
-            if err.errno == 403:
+            if err.response.status_code == 403:
                 return False
             else:
                 raise
