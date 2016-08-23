@@ -30,6 +30,7 @@ system.
 
 import sys
 
+from datetime import datetime
 from argparse import ArgumentParser
 from getpass import getpass
 from json import dump, loads
@@ -66,6 +67,12 @@ DEFAULTS = {
 
 
 class SessionInvalid(Exception):
+    """
+    raised by various api utility functions if they require a valid
+    auth and don't get one. caught in main to inform user they need to
+    connect
+    """
+
     pass
 
 
@@ -154,6 +161,7 @@ def cli_command_auth_connect(options):
 
 def cli_subparser_auth_connect(parent):
     p = subparser(parent, "connect", cli_command_auth_connect)
+    optional_auth_host(p)
 
     p.add_argument("--refresh", action="store_true", default=False,
                    help="refresh rather than re-auth if possible")
@@ -166,9 +174,6 @@ def cli_subparser_auth_connect(parent):
 
     p.add_argument("--request-client-token", action="store_true",
                    help="Request that the server provide a client token")
-
-    p.add_argument("--auth-host", action="store",
-                   help="Mojang authentication host")
 
 
 def cli_command_auth_validate(options):
@@ -258,15 +263,13 @@ def cli_command_auth_signout(options):
 
 def cli_subparser_auth_signout(parent):
     p = subparser(parent, "signout", cli_command_auth_signout)
+    optional_auth_host(p)
 
     p.add_argument("--user", action="store",
                    help="Mojang username")
 
     p.add_argument("--password", action="store",
                    help="Mojang password")
-
-    p.add_argument("--auth-host", action="store",
-                   help="Mojang authentication host")
 
 
 _SENSITIVE_MARKERS = ("access", "token", "key", "pass")
@@ -334,12 +337,10 @@ def cli_command_auth_show(options):
 
 def cli_subparser_auth_show(parent):
     p = subparser(parent, "show", cli_command_auth_show)
+    optional_json(p)
 
     p.add_argument("--unsafe", action="store_true",
                    help="Output values which are not safe to share")
-
-    p.add_argument("--json", action="store_true",
-                   help="Output data as JSON. Honors --unsafe")
 
 
 def cli_subparser_auth(parent):
@@ -403,15 +404,13 @@ def cli_command_realm_list(options):
 
 def cli_subparser_realm_list(parent):
     p = subparser(parent, "list", cli_command_realm_list)
+    optional_json(p)
 
     p.add_argument("--players", action="store_true", default=False,
                    help="Show online players")
 
     p.add_argument("--motd", action="store_true", default=False,
                    help="Show message of the day")
-
-    p.add_argument("--json", action="store_true",
-                   help="print as formatted JSON")
 
 
 _REALM_INFO_KEYS = ("state", "ip", "maxPlayers", "worldType", "activeSlot",
@@ -425,7 +424,6 @@ def cli_command_realm_info(options):
     """
 
     api = realms_api(options)
-
     info = api.realm_info(options.realm_id)
 
     if options.json:
@@ -469,11 +467,9 @@ def cli_command_realm_info(options):
 
 def cli_subparser_realm_info(parent):
     p = subparser(parent, "info", cli_command_realm_info)
+    optional_json(p)
 
     p.add_argument("realm_id", action="store", type=int)
-
-    p.add_argument("--json", action="store_true",
-                   help="print as formatted JSON")
 
 
 def cli_command_realm_backups(options):
@@ -538,9 +534,7 @@ def cli_subparser_realm_download(parent):
 
 def cli_subparser_realms(parent):
     p = subparser(parent, "realm")
-
-    p.add_argument("--realms-host", action="store",
-                   help="Mojang Realms API host to use")
+    optional_realms_host(p)
 
     cli_subparser_realm_list(p)
     cli_subparser_realm_info(p)
@@ -549,6 +543,108 @@ def cli_subparser_realms(parent):
 
 
 # --- mojang core public API ---
+
+
+def mojang_api(options):
+    """
+    Fetch a RealmsAPI instance configured with our current session.
+    Verify that the current session is available for use -- if not
+    trigger an exception that will notify the CLI user that they need
+    to log in before proceeding.
+    """
+
+    auth = options.auth
+    if auth.validate():
+        return MojangAPI(auth, options.api_host)
+    else:
+        raise SessionInvalid()
+
+
+_WHOAMI_DATE_FIELDS = ("dateOfBirth", "migratedAt",
+                       "passwordChangedAt", "registeredAt")
+
+
+def cli_command_user_whoami(options):
+    """
+    cli: gnajom user whoami
+    """
+
+    api = mojang_api(options)
+    info = api.my_user_info()
+
+    if options.json:
+        pretty(info)
+
+    else:
+        for key in _WHOAMI_DATE_FIELDS:
+            if key in info:
+                val = info[key] // 1000
+                info[key] = datetime.utcfromtimestamp(val)
+
+        print "Authenticated:"
+        for k, v in sorted(info.items()):
+            print "  %s: %s" % (k, v)
+
+    return 0
+
+
+def cli_subparser_user_whoami(parent):
+    p = subparser(parent, "whoami", cli_command_user_whoami)
+    optional_json(p)
+
+
+def cli_command_user_lookup(options):
+    """
+    cli: gnajom user lookup
+    """
+
+    print "NYI"
+    return 0
+
+
+def cli_subparser_user_lookup(parent):
+    p = subparser(parent, "lookup", cli_command_user_lookup)
+    optional_api_host(p)
+    optional_json(p)
+
+
+def cli_command_user_history(options):
+    """
+    cli: gnajom user history
+    """
+
+    print "NYI"
+    return 0
+
+
+def cli_subparser_user_history(parent):
+    p = subparser(parent, "history", cli_command_user_history)
+    optional_api_host(p)
+    optional_json(p)
+
+
+def cli_command_user_profile(options):
+    """
+    cli: gnajom user profile
+    """
+
+    print "NYI"
+    return 0
+
+
+def cli_subparser_user_profile(parent):
+    p = subparser(parent, "profile", cli_command_user_profile)
+    optional_api_host(p)
+    optional_json(p)
+
+
+def cli_subparser_user(parent):
+    p = subparser(parent, "user")
+
+    cli_subparser_user_whoami(p)
+    cli_subparser_user_lookup(p)
+    cli_subparser_user_history(p)
+    cli_subparser_user_profile(p)
 
 
 _SERVICE_NAMES = {
@@ -591,15 +687,116 @@ def cli_command_status(options):
 
 def cli_subparser_status(parent):
     p = subparser(parent, "status", cli_command_status)
+    optional_status_host(p)
+    optional_json(p)
 
-    p.add_argument("--mojang-status-host", action="store",
-                   help="host to access for status API calls")
 
-    p.add_argument("--json", action="store_true",
-                   help="print as formatted JSON")
+def cli_command_statistics(options):
+    """
+    cli: gnajom statistics
+    """
+
+    api = mojang_api(options)
+    stat = api.statistics()
+
+    if options.json:
+        pretty(stat)
+
+    else:
+        print "Statistics:"
+        for k, v in stat.iteritems():
+            print "  %s: %s" % (k, v)
+
+    return 0
+
+
+def cli_subparser_statistics(parent):
+    p = subparser(parent, "statistics", cli_command_statistics)
+    otional_api_host(p)
+    optional_json(p)
+
+
+def cli_command_skin_change(options):
+    """
+    cli: gnajom skin reset
+    """
+
+    print "NYI"
+    return 0
+
+
+def cli_subparser_skin_change(parent):
+    p = subparser(parent, "change", cli_command_skin_change)
+    optional_api_host(p)
+
+
+def cli_command_skin_upload(options):
+    """
+    cli: gnajom skin reset
+    """
+
+    print "NYI"
+    return 0
+
+
+def cli_subparser_skin_upload(parent):
+    p = subparser(parent, "upload", cli_command_skin_upload)
+    optional_api_host(p)
+
+
+def cli_command_skin_reset(options):
+    """
+    cli: gnajom skin reset
+    """
+
+    print "NYI"
+    return 0
+
+
+def cli_subparser_skin_reset(options):
+    p = subparser(parent, "reset", cli_command_skin_reset)
+    optional_api_host(p)
+
+
+def cli_subparser_skin(parent):
+    p = subparser(parent, "skin")
+
+    cli_subparser_skin_change(p)
+    cli_subparser_skin_upload(p)
+    cli_subparser_skin_reset(p)
 
 
 # --- CLI setup and entry point ---
+
+
+def optional_realms_host(parser):
+    parse.add_argument("--realms-host", action="store",
+                       help="Mojang Realms API host")
+    return parser
+
+
+def optional_api_host(parser):
+    parser.add_argument("--api-host", action="store",
+                        help="Mojang Public API host")
+    return parser
+
+
+def optional_status_host(parser):
+    parser.add_argument("--status-host", action="store",
+                        help="Mojang Status API host")
+    return parser
+
+
+def optional_auth_host(parser):
+    parser.add_argument("--auth-host", action="store",
+                        help="Yggdrasil Authentication host")
+    return parser
+
+
+def optional_json(parser):
+    parse.add_argument("--json", action="store_true",
+                       help="Output results as formatted JSON")
+    return parser
 
 
 def subparser(parser, name, cli_func=None, help=None):
@@ -654,10 +851,10 @@ def cli_argparser(argv=None):
 
     cli_subparser_auth(parser)
     cli_subparser_realms(parser)
-
     cli_subparser_status(parser)
-    #cli_subparser_user(parser)
-    #cli_subparser_profile(parser)
+    cli_subparser_statistics(parser)
+    cli_subparser_user(parser)
+    cli_subparser_skin(parser)
 
     return parser
 
