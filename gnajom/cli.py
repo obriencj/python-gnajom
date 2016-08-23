@@ -125,6 +125,11 @@ def cli_command_auth_connect(options):
             save_auth(options, auth)
             return 0
 
+        else:
+            # then this stuff is trash, throw it out
+            auth.accessToken = None
+            auth.clientToken = None
+
     password = options.password or \
                getpass("password for %s: " % auth.username)
 
@@ -198,7 +203,7 @@ def cli_command_auth_refresh(options):
 
     if options.force or not auth.validate():
         if auth.refresh():
-            save_auth(options.auth)
+            save_auth(options.auth, auth)
             return 0
         else:
             print >> sys.stderr, "Could not refresh session."
@@ -685,7 +690,7 @@ def main(argv=None):
         return 1
 
     except HTTPError as http_err:
-        if http_err.errno == 429:
+        if http_err.response.status_code == 429:
             # this is a somewhat expected occurance, so we want to
             # handle it more gracefully than with a backtrace.
             print >> sys.stderr, http_err
