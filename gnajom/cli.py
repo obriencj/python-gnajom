@@ -712,7 +712,7 @@ def cli_command_statistics(options):
 
 def cli_subparser_statistics(parent):
     p = subparser(parent, "statistics", cli_command_statistics)
-    otional_api_host(p)
+    optional_api_host(p)
     optional_json(p)
 
 
@@ -753,7 +753,7 @@ def cli_command_skin_reset(options):
     return 0
 
 
-def cli_subparser_skin_reset(options):
+def cli_subparser_skin_reset(parent):
     p = subparser(parent, "reset", cli_command_skin_reset)
     optional_api_host(p)
 
