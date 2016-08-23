@@ -21,6 +21,11 @@ from gnajom import APIHost
 from base64 import b64decode
 
 
+__all__ = ("MojangAPI", "SessionAPI", "StatusAPI",
+           "DEFAULT_MOJANG_API_HOST", "DEFAULT_MOJANG_STESSION_HOST",
+           "DEFAULT_MOJANG_STATUS_HOST")
+
+
 DEFAULT_MOJANG_API_HOST = "https://api.mojang.com"
 DEFAULT_MOJANG_SESSION_HOST = "https://sessionserver.mojang.com"
 DEFAULT_MOJANG_STATUS_HOST = "https://status.mojang.com"
@@ -118,8 +123,8 @@ class StatusAPI(object):
     * http://wiki.vg/Mojang_API
     """
 
-    def __init__(self, auth=None, host=DEFAULT_MOJANG_STATUS_HOST):
-        self.auth = auth
+    def __init__(self, auth, host=DEFAULT_MOJANG_STATUS_HOST):
+        self.auth = auth # unused, maybe useful in the future.
         self.api = APIHost(host)
 
 
