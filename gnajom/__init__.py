@@ -45,6 +45,7 @@ class APIHost(object):
 
         self._host = hosturi
         self.cookies = RequestsCookieJar()
+        self.headers = {}
 
 
     def get(self, endpoint):
@@ -55,7 +56,8 @@ class APIHost(object):
 
         assert(endpoint)
 
-        resp = get(self._host + endpoint, cookies=self.cookies)
+        resp = get(self._host + endpoint,
+                   cookies=self.cookies, headers=self.headers)
 
         resp.raise_for_status()
 
@@ -73,7 +75,8 @@ class APIHost(object):
 
         assert(endpoint)
 
-        resp = delete(self._host + endpoint, cookies=self.cookies)
+        resp = delete(self._host + endpoint,
+                      cookies=self.cookies, headers=self.headers)
 
         resp.raise_for_status()
 
@@ -93,7 +96,8 @@ class APIHost(object):
         assert(endpoint)
 
         data = dumps(payload)
-        resp = post(self._host + endpoint, data, cookies=self.cookies)
+        resp = post(self._host + endpoint, data,
+                    cookies=self.cookies, headers=self.headers)
 
         resp.raise_for_status()
 
