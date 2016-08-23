@@ -770,7 +770,7 @@ def cli_subparser_skin(parent):
 
 
 def optional_realms_host(parser):
-    parse.add_argument("--realms-host", action="store",
+    parser.add_argument("--realms-host", action="store",
                        help="Mojang Realms API host")
     return parser
 
@@ -794,7 +794,7 @@ def optional_auth_host(parser):
 
 
 def optional_json(parser):
-    parse.add_argument("--json", action="store_true",
+    parser.add_argument("--json", action="store_true",
                        help="Output results as formatted JSON")
     return parser
 
