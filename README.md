@@ -17,11 +17,38 @@ The majority of the API information used in this library is straight
 from the excellent resource [wiki.vg](http://wiki.vg)
 
 
+## Command-Line Interface
+
+The `gnajom` command-line interface (or `gnajom.cli:main()`) uses the
+argparse package to provide a nested set of commands exposing a
+number of available calls in the various Mojang public APIs.
+
+* `gnajom auth connect`
+* `gnajom auth validate`
+* `gnajom auth refresh`
+* `gnajom auth invalidate`
+* `gnajom auth show`
+* `gnajom realm list`
+* `gnajom realm info`
+* `gnajom realm backups`
+* `gnajom realm download`
+* `gnajom status`
+* `gnajom statistics`
+* `gnajom user whoami`
+* `gnajom user lookup`
+* `gnajom user history`
+* `gnajom user profile`
+* `gnajom skin change`
+* `gnajom skin upload`
+* `gnajom skin reset`
+
+
 ## Requirements
 
 - [Python] 2.6 or later (no support for Python 3, because I don't care)
-- [requests](http://docs.python-requests.org/en/latest/)
-- [argparse](https://pypi.python.org/pypi/argparse)
+- [requests](http://docs.python-requests.org/en/latest/) for HTTP calls
+- [argparse](https://pypi.python.org/pypi/argparse) for composing the
+  nested commands and options
 
 
 ## Author
