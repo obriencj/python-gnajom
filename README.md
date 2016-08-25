@@ -35,9 +35,10 @@ number of available calls in the various Mojang public APIs.
 * `gnajom status`
 * `gnajom statistics`
 * `gnajom user whoami`
-* `gnajom user lookup`
 * `gnajom user history`
 * `gnajom user profile`
+* `gnajom profile lookup`
+* `gnajom profile info`
 * `gnajom skin change`
 * `gnajom skin upload`
 * `gnajom skin reset`
