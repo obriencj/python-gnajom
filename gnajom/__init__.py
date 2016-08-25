@@ -29,6 +29,11 @@ from requests import get, post
 from requests.cookies import RequestsCookieJar
 
 
+# seriously, how did people get along before requests? it's a shining
+# gem among all python modules. get, put, cookies, headers, multi-part
+# form encoding, url form encoding, all easily accessible.
+
+
 __all__ = ( "APIHost", )
 
 
@@ -96,6 +101,10 @@ class APIHost(object):
         assert(endpoint)
 
         data = dumps(payload)
+
+        headers = self.headers.copy()
+        headers["Content-Type"] = "application/json"
+
         resp = post(self._host + endpoint, data,
                     cookies=self.cookies, headers=self.headers)
 
@@ -105,6 +114,54 @@ class APIHost(object):
             return resp.json()
         else:
             return None
+
+
+    def post_form(self, endpoint, payload):
+        """
+        Trigger an API endpoint on the host via an HTTP POST, sending
+        payload represented as multipart form data. Any JSON results
+        will be parsed and returned.
+        """
+
+        assert(endpoint)
+
+        # requests is smart enough to update the Content-Type header
+        # when the files= argument is specified
+        resp = post(self._host + endpoint, files=payload,
+                    cookies=self.cookies, headers=self.headers)
+
+        resp.raise_for_status()
+
+        if len(resp.content):
+            return resp.json()
+        else:
+            return None
+
+
+    def post_encoded(self, endpoint, payload):
+        """
+        Trigger an API endpoint on the host via an HTTP POST, sending
+        payload represented as urlencoded form data. And JSON results
+        will be parsed and returned.
+        """
+
+        assert(endpoint)
+
+        data = urlencode(payload)
+
+        headers = self.headers.copy()
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+
+        resp = post(self._host + endpoint, data,
+                    cookies=self.cookies, headers=self.headers)
+
+        resp.raise_for_status()
+
+        if len(resp.content):
+            return resp.json()
+        else:
+            return None
+
 
 
 #
