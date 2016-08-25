@@ -17,8 +17,10 @@ and service status
 """
 
 
-from gnajom import APIHost
 from base64 import b64decode
+from json import loads
+
+from gnajom import APIHost
 
 
 __all__ = ("MojangAPI", "SessionAPI", "StatusAPI",
@@ -75,23 +77,30 @@ class MojangAPI(object):
         return self.api.post("/profiles/minecraft", list(playernames))
 
 
-    def change_skin(self, uuid, model, skin_url):
-        pass
+    def change_skin(self, uuid, skin_url, slim=False):
+        payload = {"model": "slim" if slim else "",
+                   "url": skin_url}
+
+        return self.api.post_encoded("/user/profile/%s/skin" % uuid)
 
 
-    def upload_skin(self, uuid, model, skin_blob):
-        pass
+    def upload_skin(self, uuid, skin_stream, slim=False):
+        payload = {"model": "slim" if slim else "",
+                   "file": ("harambe.png", skin_stream, "image/png")}
+
+        return self.api.post_form("/user/profile/%s/skin" % uuid, payload)
 
 
-    def upload_skin_filename(self, uuid, model, skin_filename):
-        pass
+    def upload_skin_filename(self, uuid, skin_filename, slim=False):
+        with open(skin_filename) as skin_stream:
+            return upload_skin(self, uuid, skin_stream, slim)
 
 
     def reset_skin(self, uuid):
         return self.api.delete("/user/profile/%s/skin" % uuid)
 
 
-    def my_user_info(self):
+    def whoami(self):
         return self.api.get("/user")
 
 
@@ -113,17 +122,25 @@ class SessionAPI(object):
         self.auth = auth
         self.api = APIHost(host)
 
+        if self.auth.accessToken:
+            bearer =  "Bearer " + self.auth.accessToken
+            self.api.headers["Authorization"] = bearer
 
-    def profile_textures(self, uuid):
+
+    def profile_info(self, uuid):
         data = self.api.get("/session/minecraft/profile/%s" % uuid)
 
         if data:
-            props = data.get("properties")
-            if props:
-                val = props.get("value")
-                val = b64decode(val)
-                val = loads(val)
-                props["value"] = val
+            props = data.get("properties", ())
+            for prop in props:
+                if prop["name"] == "textures":
+                    # we'll transform this particular named property
+                    # value since we know it's actually JSON
+                    val = prop.get("value")
+                    val = b64decode(val)
+                    val = loads(val)
+                    prop["value"] = val
+                    break
 
         return data
 
