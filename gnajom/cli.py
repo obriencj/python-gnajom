@@ -30,9 +30,10 @@ system.
 
 import sys
 
+from argparse import ArgumentParser, FileType
 from datetime import datetime
-from argparse import ArgumentParser
 from getpass import getpass
+from itertools import imap
 from json import dump, loads
 from os import chmod, makedirs
 from os.path import basename, exists, expanduser, split
@@ -208,7 +209,7 @@ def cli_command_auth_refresh(options):
 
     if options.force or not auth.validate():
         if auth.refresh():
-            save_auth(options.auth, auth)
+            save_auth(options, auth)
             return 0
         else:
             print >> sys.stderr, "Could not refresh session."
@@ -560,6 +561,21 @@ def mojang_api(options):
         raise SessionInvalid()
 
 
+def session_api(options):
+    """
+    Fetch a SessionAPI instance configured with out current session.
+    Verify that the current session is available for use -- if not
+    trigger an exception that will notify the CLI user that they need
+    to log in before proceeding.
+    """
+
+    auth = options.auth
+    if auth.validate():
+        return SessionAPI(auth, options.session_host)
+    else:
+        raise SessionInvalid()
+
+
 _WHOAMI_DATE_FIELDS = ("dateOfBirth", "migratedAt",
                        "passwordChangedAt", "registeredAt")
 
@@ -570,7 +586,7 @@ def cli_command_user_whoami(options):
     """
 
     api = mojang_api(options)
-    info = api.my_user_info()
+    info = api.whoami()
 
     if options.json:
         pretty(info)
@@ -590,21 +606,6 @@ def cli_command_user_whoami(options):
 
 def cli_subparser_user_whoami(parent):
     p = subparser(parent, "whoami", cli_command_user_whoami)
-    optional_json(p)
-
-
-def cli_command_user_lookup(options):
-    """
-    cli: gnajom user lookup
-    """
-
-    print "NYI"
-    return 0
-
-
-def cli_subparser_user_lookup(parent):
-    p = subparser(parent, "lookup", cli_command_user_lookup)
-    optional_api_host(p)
     optional_json(p)
 
 
@@ -628,7 +629,14 @@ def cli_command_user_profile(options):
     cli: gnajom user profile
     """
 
-    print "NYI"
+    api = mojang_api(options)
+    info = api.username_to_uuid(options.search_username, options.time)
+
+    if options.json:
+        pretty(info)
+    elif info:
+        print "%s %s" % (info["name"], info["id"])
+
     return 0
 
 
@@ -637,14 +645,85 @@ def cli_subparser_user_profile(parent):
     optional_api_host(p)
     optional_json(p)
 
+    p.add_argument("search_username",
+                   help="username to search for")
+
+    p.add_argument("--time", default=0, type=int,
+                   help="timestamp to search at")
+
 
 def cli_subparser_user(parent):
     p = subparser(parent, "user")
 
     cli_subparser_user_whoami(p)
-    cli_subparser_user_lookup(p)
     cli_subparser_user_history(p)
     cli_subparser_user_profile(p)
+
+
+def cli_command_profile_lookup(options):
+    """
+    cli: gnajom profile lookup
+    """
+
+    search = set(options.search_players)
+    if options.from_file:
+        search.update(line for line in
+                      imap(str.strip, options.from_file) if line)
+
+    if not search:
+        return 0
+
+    api = mojang_api(options)
+    found = api.playernames_to_uuids(search)
+
+    if options.json:
+        pretty(found)
+    else:
+        for f in found:
+            print "%s %s" % (f["name"], f["id"])
+    return 0
+
+
+def cli_subparser_profile_lookup(parent):
+    p = subparser(parent, "lookup", cli_command_profile_lookup)
+    optional_api_host(p)
+    optional_json(p)
+
+    p.add_argument("search_players", nargs="*", action="store", type=str,
+                   help="usernames to look up")
+
+    p.add_argument("--from-file", action="store", type=FileType('r'),
+                   help="load list of usernames from file, or - for stdin")
+
+
+def cli_command_profile_info(options):
+    """
+    cli: gnajom profile info
+    """
+
+    # TODO: we need to cache this and only call to the API if the
+    # cached copy is more than 60 seconds old.
+
+    api = session_api(options)
+    info = api.profile_info(options.uuid)
+    pretty(info)
+
+    return 0
+
+
+def cli_subparser_profile_info(parent):
+    p = subparser(parent, "info", cli_command_profile_info)
+    optional_api_host(p)
+    optional_json(p)
+
+    p.add_argument("uuid", action="store")
+
+
+def cli_subparser_profile(parent):
+    p = subparser(parent, "profile")
+
+    cli_subparser_profile_lookup(p)
+    cli_subparser_profile_info(p)
 
 
 _SERVICE_NAMES = {
@@ -766,6 +845,20 @@ def cli_subparser_skin(parent):
     cli_subparser_skin_reset(p)
 
 
+#def cli_command_blocked(options):
+#    """
+#    cli: gnajom blocked
+#    """
+#
+#    api = session_api(options)
+#    info = api.blocked_servers()
+
+
+#def cli_subparser_blocked(parent):
+#    p = subparser(parent, "blocked", cli_command_blocked)
+#    optional_session_host(p)
+
+
 # --- CLI setup and entry point ---
 
 
@@ -778,6 +871,12 @@ def optional_realms_host(parser):
 def optional_api_host(parser):
     parser.add_argument("--api-host", action="store",
                         help="Mojang Public API host")
+    return parser
+
+
+def optional_session_host(parser):
+    parser.add_argument("--session-host", action="store",
+                        help="Mojang Sessions API host")
     return parser
 
 
@@ -854,7 +953,9 @@ def cli_argparser(argv=None):
     cli_subparser_status(parser)
     cli_subparser_statistics(parser)
     cli_subparser_user(parser)
+    cli_subparser_profile(parser)
     cli_subparser_skin(parser)
+    #cli_subparser_blocked(parser)
 
     return parser
 
