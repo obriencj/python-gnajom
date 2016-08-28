@@ -30,7 +30,7 @@ system.
 
 import sys
 
-from argparse import ArgumentParser, FileType
+from argparse import ArgumentParser, FileType, _StoreAction, _StoreConstAction
 from datetime import datetime
 from getpass import getpass
 from itertools import imap
@@ -55,7 +55,7 @@ DEFAULT_SESSION_FILE = expanduser("~/.gnajom/session")
 
 
 DEFAULTS = {
-    "user": None,
+    "username": None,
     "config_file": DEFAULT_CONFIG_FILE,
     "session_file": DEFAULT_SESSION_FILE,
     "auth_host": DEFAULT_AUTH_HOST,
@@ -91,7 +91,9 @@ def pretty(obj, out=sys.stdout):
 
 
 def load_auth(options):
-    auth = Authentication(options.user, host=options.auth_host)
+    print "load_auth", options.username, options.session_file
+
+    auth = Authentication(options.username, host=options.auth_host)
 
     session = options.session_file or DEFAULT_SESSION_FILE
     if exists(session):
@@ -115,6 +117,8 @@ def cli_command_auth_connect(options):
     """
     cli: gnajom auth connect
     """
+
+    print "cli_command_auth_connect", options.username, options.session_file
 
     auth = options.auth
 
@@ -167,7 +171,7 @@ def cli_subparser_auth_connect(parent):
     p.add_argument("--refresh", action="store_true", default=False,
                    help="refresh rather than re-auth if possible")
 
-    p.add_argument("--user", action="store",
+    p.add_argument("--user", action="store", dest="username",
                    help="Mojang username")
 
     p.add_argument("--password", action="store",
@@ -253,7 +257,7 @@ def cli_command_auth_signout(options):
     """
 
     # use a clean Authentication rather than a loaded session
-    auth = Authentication(options.user, host=options.auth_host)
+    auth = Authentication(options.username, host=options.auth_host)
 
     password = options.password or \
                getpass("password for %s: " % auth.username)
@@ -266,7 +270,7 @@ def cli_subparser_auth_signout(parent):
     p = subparser(parent, "signout", cli_command_auth_signout)
     optional_auth_host(p)
 
-    p.add_argument("--user", action="store",
+    p.add_argument("--user", action="store", dest="username",
                    help="Mojang username")
 
     p.add_argument("--password", action="store",
@@ -626,7 +630,7 @@ def cli_subparser_user_history(parent):
 
 def cli_command_user_profile(options):
     """
-    cli: gnajom user profile
+    cli: gnajom player info
     """
 
     api = mojang_api(options)
@@ -900,18 +904,29 @@ def optional_json(parser):
 
 def subparser(parser, name, cli_func=None, help=None):
     # the default behaviour for subcommands is kinda shit. They don't
-    # properly inherit defaults, and for some idiotic reason running
-    # add_subparsers doesn't give you the same subparser to add more
-    # subcommands to, it just errors.
+    # properly inherit defaults, nor parent arguments, and for some
+    # idiotic reason running add_subparsers doesn't give you the same
+    # subparser to add more subcommands to, it just errors. argparse
+    # is less of a pancea and more of a pile of crap.
 
+    # pretend add_subparsers is memoized
     if parser._subparsers:
         subs = parser._subparsers._actions[-1]
     else:
         subs = parser.add_subparsers()
+
+    # create the subparser for the command
     sp = subs.add_parser(name, help=help)
 
+    # "inherit" the parent command optional arguments
+    for act in parser._subparsers._actions:
+        if isinstance(act, (_StoreAction, _StoreConstAction)):
+            sp._add_action(act)
+
+    # "inherit" the parent command defaults
     sp._defaults.update(parser._defaults)
 
+    # set the cli handler function for this command
     if cli_func:
         sp.set_defaults(cli_func=cli_func)
 
@@ -943,8 +958,12 @@ def cli_argparser(argv=None):
     if config.read([options.config]):
         parser.set_defaults(**dict(config.items("defaults")))
 
+    # this argument doesn't do anything, we just want it visible for
+    # invocations of --help, any actual loading of the config put data
+    # into the defaults
     parser.add_argument("-c", "--config-file", action="store",
                         help="Configuration file")
+
     parser.add_argument("-s", "--session-file", action="store",
                         help="Session auth file")
 

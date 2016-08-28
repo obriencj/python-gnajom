@@ -29,19 +29,28 @@ number of available calls in the various Mojang public APIs.
 * `gnajom auth invalidate`
 * `gnajom auth show`
 * `gnajom realm list`
-* `gnajom realm info`
-* `gnajom realm backups`
-* `gnajom realm download`
+* `gnajom realm info REALM_ID`
+* `gnajom realm backups REALM_ID`
+* `gnajom realm download REALM_ID WORLD_SLOT`
 * `gnajom status`
 * `gnajom statistics`
-* `gnajom user whoami`
-* `gnajom user history`
-* `gnajom user profile`
-* `gnajom profile lookup`
-* `gnajom profile info`
-* `gnajom skin change`
-* `gnajom skin upload`
+* `gnajom whoami`
+* `gnajom player history PLAYER_NAME`
+* `gnajom player info PLAYER_NAME`
+* `gnajom profile lookup PLAYER_NAME ...`
+* `gnajom profile info PROFILE_ID`
+* `gnajom skin change URL`
+* `gnajom skin upload FILE_NAME`
 * `gnajom skin reset`
+
+Some distinctions are necessary for some of this to make sense:
+
+* a USER is a mojang account, typically named by email address
+* a PLAYER is a minecraft account attached to the USER
+* a PROFILE is usually named after the PLAYER, and contains texture info
+
+In addition to names, all three have different IDs, and it can be
+tricky to distinguish which one you should use.
 
 
 ## Requirements
