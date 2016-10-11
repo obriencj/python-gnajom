@@ -35,11 +35,13 @@ def pack_varint(buf, val):
 
     while val >= 0x80:
 	bits = val & 0x7F
-	buf.write(p(0x80|bits)[0])
+        b, _ = p(0x80 | bits)
+	buf.write(b)
 
 	val >>= 7
 	bits = val & 0x7F
-        buf.write(p(bits)[0])
+        b, _ = p(bits)
+        buf.write(b)
 
 
 def unpack_varint(buf):
@@ -50,7 +52,7 @@ def unpack_varint(buf):
     val = 0x80
 
     while val & 0x80:
-        val = u(buf.read(1))[0]
+        val, _ = u(buf.read(1))
         total |= ((val & 0x7f) << shift)
         shift += 7
 
