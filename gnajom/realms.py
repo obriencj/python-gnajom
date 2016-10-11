@@ -89,7 +89,8 @@ class RealmsAPI(object):
 
     def realm_join(self, realm_id):
         """
-        Attempt to add the given account to the realm by ID
+        Wakes up a realm so that it can be joined, returns a string
+        specifying the IP_ADDRESS:PORT of the running server
         """
 
         return self.api.get("/worlds/%i/join" % realm_id)

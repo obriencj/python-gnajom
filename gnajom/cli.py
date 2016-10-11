@@ -39,6 +39,7 @@ from os import chmod, makedirs
 from os.path import basename, exists, expanduser, split
 from requests import get
 from requests.exceptions import HTTPError
+from time import sleep
 from ConfigParser import SafeConfigParser
 
 from .auth import Authentication, DEFAULT_AUTH_HOST, HOST_YGGDRASIL
@@ -477,6 +478,61 @@ def cli_subparser_realm_info(parent):
     p.add_argument("realm_id", action="store", type=int)
 
 
+def cli_command_realm_knock(options):
+    """
+    cli: gnajom realm knock
+    """
+
+    api = realms_api(options)
+
+    retry = True
+    while(retry):
+        try:
+            data = api.realm_join(options.realm_id)
+
+        except HTTPError as hte:
+            if hte.response.status_code == 503:
+                # this means the server was asleep, and is most likely
+                # coming online from our knock
+
+                if options.no_wait:
+                    # We don't have any data yet, but the user doesn't
+                    # want to wait for it to wake, so make up
+                    # something and stop retrying.
+                    retry = False
+                    data = {'address': None, 'pending': True}
+                else:
+                    # we'll give the realms service a moment to create
+                    # and start up a server for our realm
+                    sleep(2)
+            else:
+                # some other response code, let's propagate that up
+                raise
+        else:
+            # if there was no error, then we don't need to retry
+            retry = False
+
+    if options.json:
+        pretty(data)
+    elif "pending" in data:
+        print "Server is coming online"
+    else:
+        print "Server is online at", data["address"]
+
+    return 0
+
+
+def cli_subparser_realm_knock(parent):
+    p = subparser(parent, "knock", cli_command_realm_join)
+    optional_json(p)
+
+    p.add_argument("realm_id", action="store", type=int)
+
+    p.add_argument("--no-wait", action="store_true", default=False,
+                   help="Do not wait for the realm to come online, return"
+                   " immediately even if the address is not yet determined")
+
+
 def cli_command_realm_backups(options):
     """
     cli: gnajom realm backups
@@ -543,6 +599,7 @@ def cli_subparser_realms(parent):
 
     cli_subparser_realm_list(p)
     cli_subparser_realm_info(p)
+    cli_subparser_realm_join(p)
     cli_subparser_realm_backups(p)
     cli_subparser_realm_download(p)
 
