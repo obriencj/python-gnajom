@@ -30,7 +30,7 @@ number of available calls in the various Mojang public APIs.
 * `gnajom auth show`
 * `gnajom realm list`
 * `gnajom realm info REALM_ID`
-* `gnajom realm knock`
+* `gnajom realm knock REALM_ID`
 * `gnajom realm backups REALM_ID`
 * `gnajom realm download REALM_ID WORLD_SLOT`
 * `gnajom status`
