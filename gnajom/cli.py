@@ -50,6 +50,8 @@ from .mojang import (MojangAPI, SessionAPI, StatusAPI,
                      DEFAULT_MOJANG_API_HOST, DEFAULT_MOJANG_SESSION_HOST,
                      DEFAULT_MOJANG_STATUS_HOST)
 
+from .slp import legacy_slp
+
 
 DEFAULT_CONFIG_FILE = expanduser("~/.gnajom/gnajom.conf")
 DEFAULT_SESSION_FILE = expanduser("~/.gnajom/session")
@@ -92,7 +94,7 @@ def pretty(obj, out=sys.stdout):
 
 
 def load_auth(options):
-    print "load_auth", options.username, options.session_file
+    #print "load_auth", options.username, options.session_file
 
     auth = Authentication(options.username, host=options.auth_host)
 
@@ -478,24 +480,18 @@ def cli_subparser_realm_info(parent):
     p.add_argument("realm_id", action="store", type=int)
 
 
-def cli_command_realm_knock(options):
-    """
-    cli: gnajom realm knock
-    """
-
-    api = realms_api(options)
-
+def _do_realm_knock(api, realm_id, no_wait=False):
     retry = True
     while(retry):
         try:
-            data = api.realm_join(options.realm_id)
+            data = api.realm_join(realm_id)
 
         except HTTPError as hte:
             if hte.response.status_code == 503:
                 # this means the server was asleep, and is most likely
                 # coming online from our knock
 
-                if options.no_wait:
+                if no_wait:
                     # We don't have any data yet, but the user doesn't
                     # want to wait for it to wake, so make up
                     # something and stop retrying.
@@ -512,6 +508,17 @@ def cli_command_realm_knock(options):
             # if there was no error, then we don't need to retry
             retry = False
 
+    return data
+
+
+def cli_command_realm_knock(options):
+    """
+    cli: gnajom realm knock
+    """
+
+    api = realms_api(options)
+    data = _do_realm_knock(api, options.realm_id, options.no_wait)
+
     if options.json:
         pretty(data)
     elif "pending" in data:
@@ -523,7 +530,7 @@ def cli_command_realm_knock(options):
 
 
 def cli_subparser_realm_knock(parent):
-    p = subparser(parent, "knock", cli_command_realm_join)
+    p = subparser(parent, "knock", cli_command_realm_knock)
     optional_json(p)
 
     p.add_argument("realm_id", action="store", type=int)
@@ -531,6 +538,46 @@ def cli_subparser_realm_knock(parent):
     p.add_argument("--no-wait", action="store_true", default=False,
                    help="Do not wait for the realm to come online, return"
                    " immediately even if the address is not yet determined")
+
+
+def cli_command_realm_legacyping(options):
+    """
+    cli: gnajom realm legacyping
+    """
+
+    api = realms_api(options)
+
+    if options.knock:
+        # just do a knock and get the response from that, since we
+        # were probably going to have to do it if the server was
+        # asleep anyway
+        data = _do_realm_knock(api, options.realm_id)
+        data = data["address"]
+    else:
+        # get the
+        data = api.realm_info(options.realm_id)
+        data = data["ip"]
+
+    if not data:
+        print "Server is offline"
+        return -1
+
+    addr, port = data.split(":")
+    port = int(port)
+
+    fields = legacy_slp(addr, port)
+    print repr(fields)
+
+
+def cli_subparser_realm_legacyping(parent):
+    p = subparser(parent, "legacyping", cli_command_realm_legacyping)
+    optional_json(p)
+
+    p.add_argument("realm_id", action="store", type=int)
+
+    p.add_argument("--knock", action="store_true", default=False,
+                   help="If the realm is not currently online (no IP"
+                   " assigned), then knock and wait for it to wake up")
 
 
 def cli_command_realm_backups(options):
@@ -599,7 +646,8 @@ def cli_subparser_realms(parent):
 
     cli_subparser_realm_list(p)
     cli_subparser_realm_info(p)
-    cli_subparser_realm_join(p)
+    cli_subparser_realm_knock(p)
+    cli_subparser_realm_legacyping(p)
     cli_subparser_realm_backups(p)
     cli_subparser_realm_download(p)
 
