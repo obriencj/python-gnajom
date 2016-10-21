@@ -23,7 +23,6 @@ gnajom - Python package for querying Minecraft servers
 
 from struct import pack, unpack, Struct
 
-
 _B = Struct(">B")
 
 
