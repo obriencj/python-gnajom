@@ -1,45 +1,68 @@
 
-gnajom auth
 
 # looks in the ~/.gnajom/settings.conf for the profile, loads
 # those settings (username, server) and authenticates. If password is
 # undefined, prompt for it. This will write out a session file.
 
-gnajom auth --user someone@gmail.com --session ~/.gnajom/someone.session
+gnajom auth connect
+
 
 # uses a specific username and session file, ignoring those settings
 # from ~/.gnajom/settings.conf
 
-gnajom auth --refresh
+gnajom auth connect --user someone@gmail.com --session ~/.gnajom/someone.session
+
 
 # attempts to auth as above, but first checks for session file and tries
 # to refresh. if that fails, then does a full auth
 
-gnajom refresh
+gnajom auth connect --refresh
+
 
 # looks in ~/.gnajom/settings.conf for the first profile, loads
 # those settings, looks for session file. if present, submits the
 # validate action. if validate fails then run refresh, otherwise keep
 # existing session
 
-gnajom refresh --force
+gnajom auth refresh
+
 
 # like above, but doesn't validate -- always runs the refresh
 
-gnajom verify
+gnajom auth refresh --force
+
 
 # just checks if the existing session file is still verified.
 
+gnajom auth verify
 
-gnajom realms list
 
 # looks at the realms the default user (which must be authenticated
 # and valid) has access to.
 
-gnajom realms info $id
+gnajom realm list
+
 
 # prints information about a realm
 
-gnajom realms backups $realm_id
+gnajom realm info $realm_id
 
-gnajom realms backups download $realm_id
+
+# wakes up a sleeping realm (giving it an IP address)
+
+gnajom realm knock $realm_id
+
+
+# print available backups for a realm
+
+gnajom realm backups $realm_id
+
+
+# download the latest backup as a zip file for a given world on a
+#  realm
+
+gnajom realm backups download $realm_id $world_number
+
+
+#
+# The end.
