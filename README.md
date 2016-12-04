@@ -19,7 +19,7 @@ from the excellent resource [wiki.vg](http://wiki.vg)
 
 ## Command-Line Interface
 
-The `gnajom` command-line interface (or `gnajom.cli:main()`) uses the
+The `gnajom` command-line interface (or `gnajom.cli.main()`) uses the
 argparse package to provide a nested set of commands exposing a
 number of available calls in the various Mojang public APIs.
 
@@ -29,10 +29,11 @@ number of available calls in the various Mojang public APIs.
 * `gnajom auth invalidate`
 * `gnajom auth show`
 * `gnajom realm list`
-* `gnajom realm info REALM_ID`
-* `gnajom realm knock REALM_ID`
 * `gnajom realm backups REALM_ID`
 * `gnajom realm download REALM_ID WORLD_SLOT`
+* `gnajom realm info REALM_ID`
+* `gnajom realm knock REALM_ID`
+* `gnajom realm ping REALM_ID`
 * `gnajom status`
 * `gnajom statistics`
 * `gnajom whoami`
@@ -40,6 +41,7 @@ number of available calls in the various Mojang public APIs.
 * `gnajom player info PLAYER_NAME`
 * `gnajom profile lookup PLAYER_NAME ...`
 * `gnajom profile info PROFILE_ID`
+* `gnajom server ping SERVER_IP`
 * `gnajom skin change URL`
 * `gnajom skin upload FILE_NAME`
 * `gnajom skin reset`
@@ -59,7 +61,7 @@ tricky to distinguish which one you should use.
 - [Python] 2.6 or later (no support for Python 3, because I don't care)
 - [requests](http://docs.python-requests.org/en/latest/) for HTTP calls
 - [argparse](https://pypi.python.org/pypi/argparse) for composing the
-  nested commands and options
+  nested commands and options (included in Python 2.7)
 
 
 ## Author
