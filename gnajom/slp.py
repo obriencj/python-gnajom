@@ -32,6 +32,15 @@ PROTOCOL_LATEST = 0x4a
 PING_KEYWORD = "MC|PingHost"
 
 
+def read_or_raise(stream, count, exc_class):
+    data = stream.read(count)
+    dlen = len(data)
+    if data and dlen >= minimum:
+        return data
+    else:
+        raise exc_class("wanted %i bytes, read %i", (count, dlen))
+
+
 def pack_str(buf, s):
     buf.write(pack(">H", len(s)))
     buf.write(s.encode("utf_16_be"))
@@ -60,12 +69,13 @@ def unpack_legacy_kick(stream):
     InvalidSLPResponse
     """
 
-    buf = stream.read(3)
+    buf = read_or_raise(stream, 3, InvalidSLPResponse)
     check, length = unpack(">BH", buf)
     if check != 0xff:
         raise InvalidSLPResponse("package type %i" % (check))
 
-    remainder = stream.read(length).decode("utf_16_be")
+    remainder = read_or_raise(stream, length, InvalidSLPResponse)
+    remainder = remainder.decode("utf_16_be")
     fields = remainder.split("\0")
 
     if fields[0] != "\xa7\x31":
@@ -79,6 +89,10 @@ def unpack_legacy_kick(stream):
 
 
 def legacy_slp(host, port, protocol_version=PROTOCOL_LATEST):
+    """
+
+    """
+
     print "connecting to %s %i..." % (host, port),
     sock = socket()
     sock.connect((host, port))
