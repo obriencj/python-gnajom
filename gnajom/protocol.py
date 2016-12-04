@@ -14,15 +14,52 @@
 
 
 """
-gnajom - Python package for querying Minecraft servers
+gnajom - Python package for composing and unpacking data in the Minecraft
+server protocol
 
 :author: Christopher O'Brien <obriencj@gmail.com>
 :license: LGPL v3
 """
 
 
-from .protocol import pack_varint, unpack_varint
+from struct import pack, unpack, Struct
 
+_B = Struct(">B")
+
+
+def pack_varint(buf, val):
+    p = _B.pack
+
+    if val < 0:
+	val = (1<<32) + val
+
+    while val >= 0x80:
+	bits = val & 0x7F
+        b, _ = p(0x80 | bits)
+	buf.write(b)
+
+	val >>= 7
+	bits = val & 0x7F
+        b, _ = p(bits)
+        buf.write(b)
+
+
+def unpack_varint(buf):
+    u = _B.unpack
+
+    total = 0
+    shift = 0
+    val = 0x80
+
+    while val & 0x80:
+        val, _ = u(buf.read(1))
+        total |= ((val & 0x7f) << shift)
+        shift += 7
+
+    if total & (1<<31):
+        total = total - (1<<32)
+
+    return total
 
 
 #
