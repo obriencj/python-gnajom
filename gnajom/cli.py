@@ -672,7 +672,7 @@ def mojang_api(options):
 
 def session_api(options):
     """
-    Fetch a SessionAPI instance configured with out current session.
+    Fetch a SessionAPI instance configured with our current session.
     Verify that the current session is available for use -- if not
     trigger an exception that will notify the CLI user that they need
     to log in before proceeding.
