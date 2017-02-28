@@ -106,7 +106,7 @@ class APIHost(object):
         headers["Content-Type"] = "application/json"
 
         resp = post(self._host + endpoint, data,
-                    cookies=self.cookies, headers=self.headers)
+                    cookies=self.cookies, headers=headers)
 
         resp.raise_for_status()
 
