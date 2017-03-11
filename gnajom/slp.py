@@ -27,23 +27,10 @@ from socket import socket
 from struct import pack, unpack
 import sys
 
+from .protocol import PROTOCOL_LATEST, read_or_raise, pack_str
 
-PROTOCOL_LATEST = 0x4a
+
 PING_KEYWORD = "MC|PingHost"
-
-
-def read_or_raise(stream, count, exc_class):
-    data = stream.read(count)
-    dlen = len(data)
-    if data and dlen >= minimum:
-        return data
-    else:
-        raise exc_class("wanted %i bytes, read %i", (count, dlen))
-
-
-def pack_str(buf, s):
-    buf.write(pack(">H", len(s)))
-    buf.write(s.encode("utf_16_be"))
 
 
 def pack_legacy_ping(buf, hostname, port, protocol_version=PROTOCOL_LATEST):
