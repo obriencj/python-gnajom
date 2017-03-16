@@ -41,7 +41,7 @@ setup(name = "gnajom",
       " Mojang's public APIs",
 
       provides = [ "gnajom" ],
-      requires = [ "setuptools", "requests" ],
+      requires = [ "requests", "setuptools", "singledispatch" ],
 
       zip_safe = True,
 
@@ -49,7 +49,7 @@ setup(name = "gnajom",
                       "Programming Language :: Python :: 2" ],
 
       entry_points = {
-          "console_scripts": ['gnajom=gnajom.cli:main']
+          "console_scripts": [ 'gnajom=gnajom.cli:main' ]
       })
 
 
