@@ -37,12 +37,11 @@ from itertools import imap
 from json import dump, loads
 from os import chmod, makedirs
 from os.path import basename, exists, expanduser, split
-from requests import get
 from requests.exceptions import HTTPError
 from time import sleep
 from ConfigParser import SafeConfigParser
 
-from .auth import Authentication, DEFAULT_AUTH_HOST, HOST_YGGDRASIL
+from .auth import Authentication, DEFAULT_AUTH_HOST
 
 from .realms import RealmsAPI, DEFAULT_REALMS_HOST, DEFAULT_REALMS_VERSION
 
@@ -94,7 +93,7 @@ def pretty(obj, out=sys.stdout):
 
 
 def load_auth(options):
-    #print "load_auth", options.username, options.session_file
+    # print "load_auth", options.username, options.session_file
 
     auth = Authentication(options.username, host=options.auth_host)
 
@@ -145,8 +144,8 @@ def cli_command_auth_connect(options):
             auth.accessToken = None
             auth.clientToken = None
 
-    password = options.password or \
-               getpass("password for %s: " % auth.username)
+    password = (options.password or
+                getpass("password for %s: " % auth.username))
 
     if options.request_client_token:
         # we have explicitly been told to have the server give us
@@ -183,6 +182,8 @@ def cli_subparser_auth_connect(parent):
     p.add_argument("--request-client-token", action="store_true",
                    help="Request that the server provide a client token")
 
+    return p
+
 
 def cli_command_auth_validate(options):
     """
@@ -201,6 +202,7 @@ def cli_command_auth_validate(options):
 
 def cli_subparser_auth_validate(parent):
     p = subparser(parent, "validate", cli_command_auth_validate)
+    return p
 
 
 def cli_command_auth_refresh(options):
@@ -233,6 +235,8 @@ def cli_subparser_auth_refresh(parent):
     p.add_argument("--force", action="store_true",
                    help="refresh even if session is valid")
 
+    return p
+
 
 def cli_command_auth_invalidate(options):
     """
@@ -252,6 +256,7 @@ def cli_command_auth_invalidate(options):
 
 def cli_subparser_auth_invalidate(parent):
     p = subparser(parent, "invalidate", cli_command_auth_invalidate)
+    return p
 
 
 def cli_command_auth_signout(options):
@@ -262,8 +267,8 @@ def cli_command_auth_signout(options):
     # use a clean Authentication rather than a loaded session
     auth = Authentication(options.username, host=options.auth_host)
 
-    password = options.password or \
-               getpass("password for %s: " % auth.username)
+    password = (options.password or
+                getpass("password for %s: " % auth.username))
 
     auth.signout(password)
     return 0
@@ -278,6 +283,8 @@ def cli_subparser_auth_signout(parent):
 
     p.add_argument("--password", action="store",
                    help="Mojang password")
+
+    return p
 
 
 _SENSITIVE_MARKERS = ("access", "token", "key", "pass")
@@ -315,7 +322,8 @@ def cli_command_auth_show(options):
         pretty(show)
 
     else:
-        hide = lambda x: x if options.unsafe else "HIDDEN"
+        def hide(x):
+            return x if options.unsafe else "HIDDEN"
 
         print "Session file: %s" % options.session_file
         print "  auth_host:", auth.api._host
@@ -325,7 +333,7 @@ def cli_command_auth_show(options):
         print "  accessToken:", hide(auth.accessToken)
         print "  selectedProfile:"
         print "    name:", auth.selectedProfile["name"]
-        print "    id:",  auth.selectedProfile["id"]
+        print "    id:", auth.selectedProfile["id"]
         print "  agent:"
         print "    name:", auth.agent["name"]
         print "    version:", auth.agent["version"]
@@ -350,6 +358,8 @@ def cli_subparser_auth_show(parent):
     p.add_argument("--unsafe", action="store_true",
                    help="Output values which are not safe to share")
 
+    return p
+
 
 def cli_subparser_auth(parent):
     p = subparser(parent, "auth")
@@ -360,6 +370,8 @@ def cli_subparser_auth(parent):
     cli_subparser_auth_invalidate(p)
     cli_subparser_auth_signout(p)
     cli_subparser_auth_show(p)
+
+    return p
 
 
 # --- gnajom realms commands ---
@@ -420,10 +432,12 @@ def cli_subparser_realm_list(parent):
     p.add_argument("--motd", action="store_true", default=False,
                    help="Show message of the day")
 
+    return p
+
 
 _REALM_INFO_KEYS = ("state", "ip", "maxPlayers", "worldType", "activeSlot",
                     "expired", "daysLeft", "minigameId", "minigameName",
-                    "resourcePackUrl", "resourcePackHash")
+                    "resourcePackUrl", "resourcePackHash", )
 
 
 def cli_command_realm_info(options):
@@ -478,6 +492,8 @@ def cli_subparser_realm_info(parent):
     optional_json(p)
 
     p.add_argument("realm_id", action="store", type=int)
+
+    return p
 
 
 def _do_realm_knock(api, realm_id, no_wait=False):
@@ -539,6 +555,8 @@ def cli_subparser_realm_knock(parent):
                    help="Do not wait for the realm to come online, return"
                    " immediately even if the address is not yet determined")
 
+    return p
+
 
 def cli_command_realm_legacyping(options):
     """
@@ -579,6 +597,8 @@ def cli_subparser_realm_legacyping(parent):
                    help="If the realm is not currently online (no IP"
                    " assigned), then knock and wait for it to wake up")
 
+    return p
+
 
 def cli_command_realm_backups(options):
     """
@@ -594,6 +614,8 @@ def cli_subparser_realm_backups(parent):
     p = subparser(parent, "backups", cli_command_realm_backups)
 
     p.add_argument("realm_id", action="store", type=int)
+
+    return p
 
 
 def cli_command_realm_download(options):
@@ -639,6 +661,8 @@ def cli_subparser_realm_download(parent):
     p.add_argument("--just-url", action="store_true")
     p.add_argument("--filename", action="store", default="mc_world.tar.gz")
 
+    return p
+
 
 def cli_subparser_realms(parent):
     p = subparser(parent, "realm")
@@ -650,6 +674,8 @@ def cli_subparser_realms(parent):
     cli_subparser_realm_legacyping(p)
     cli_subparser_realm_backups(p)
     cli_subparser_realm_download(p)
+
+    return p
 
 
 # --- mojang core public API ---
@@ -686,7 +712,7 @@ def session_api(options):
 
 
 _WHOAMI_DATE_FIELDS = ("dateOfBirth", "migratedAt",
-                       "passwordChangedAt", "registeredAt")
+                       "passwordChangedAt", "registeredAt", )
 
 
 def cli_command_user_whoami(options):
@@ -717,6 +743,8 @@ def cli_subparser_user_whoami(parent):
     p = subparser(parent, "whoami", cli_command_user_whoami)
     optional_json(p)
 
+    return p
+
 
 def cli_command_user_history(options):
     """
@@ -731,6 +759,8 @@ def cli_subparser_user_history(parent):
     p = subparser(parent, "history", cli_command_user_history)
     optional_api_host(p)
     optional_json(p)
+
+    return p
 
 
 def cli_command_user_profile(options):
@@ -760,6 +790,8 @@ def cli_subparser_user_profile(parent):
     p.add_argument("--time", default=0, type=int,
                    help="timestamp to search at")
 
+    return p
+
 
 def cli_subparser_user(parent):
     p = subparser(parent, "user")
@@ -767,6 +799,8 @@ def cli_subparser_user(parent):
     cli_subparser_user_whoami(p)
     cli_subparser_user_history(p)
     cli_subparser_user_profile(p)
+
+    return p
 
 
 def cli_command_profile_lookup(options):
@@ -804,6 +838,8 @@ def cli_subparser_profile_lookup(parent):
     p.add_argument("--from-file", action="store", type=FileType('r'),
                    help="load list of usernames from file, or - for stdin")
 
+    return p
+
 
 def cli_command_profile_info(options):
     """
@@ -827,12 +863,16 @@ def cli_subparser_profile_info(parent):
 
     p.add_argument("uuid", action="store")
 
+    return p
+
 
 def cli_subparser_profile(parent):
     p = subparser(parent, "profile")
 
     cli_subparser_profile_lookup(p)
     cli_subparser_profile_info(p)
+
+    return p
 
 
 _SERVICE_NAMES = {
@@ -878,6 +918,8 @@ def cli_subparser_status(parent):
     optional_status_host(p)
     optional_json(p)
 
+    return p
+
 
 def cli_command_statistics(options):
     """
@@ -903,6 +945,8 @@ def cli_subparser_statistics(parent):
     optional_api_host(p)
     optional_json(p)
 
+    return p
+
 
 def cli_command_skin_change(options):
     """
@@ -916,6 +960,8 @@ def cli_command_skin_change(options):
 def cli_subparser_skin_change(parent):
     p = subparser(parent, "change", cli_command_skin_change)
     optional_api_host(p)
+
+    return p
 
 
 def cli_command_skin_upload(options):
@@ -931,6 +977,8 @@ def cli_subparser_skin_upload(parent):
     p = subparser(parent, "upload", cli_command_skin_upload)
     optional_api_host(p)
 
+    return p
+
 
 def cli_command_skin_reset(options):
     """
@@ -945,6 +993,8 @@ def cli_subparser_skin_reset(parent):
     p = subparser(parent, "reset", cli_command_skin_reset)
     optional_api_host(p)
 
+    return p
+
 
 def cli_subparser_skin(parent):
     p = subparser(parent, "skin")
@@ -952,6 +1002,8 @@ def cli_subparser_skin(parent):
     cli_subparser_skin_change(p)
     cli_subparser_skin_upload(p)
     cli_subparser_skin_reset(p)
+
+    return p
 
 
 #def cli_command_blocked(options):

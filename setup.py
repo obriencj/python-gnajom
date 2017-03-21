@@ -30,7 +30,7 @@ from setuptools import setup
 setup(name = "gnajom",
       version = "0.9.0",
 
-      packages = [ "gnajom" ],
+      packages = ["gnajom", ],
 
       author = "Christopher O'Brien",
       author_email = "obriencj@gmail.com",
@@ -40,16 +40,17 @@ setup(name = "gnajom",
       description = "Module and command line tools for working with"
       " Mojang's public APIs",
 
-      provides = [ "gnajom" ],
-      requires = [ "requests", "setuptools", "singledispatch" ],
+      install_requires = ["requests", "setuptools", "singledispatch", ],
 
       zip_safe = True,
 
-      classifiers = [ "Environment :: Console",
-                      "Programming Language :: Python :: 2" ],
+      classifiers = [
+          "Environment :: Console",
+          "Programming Language :: Python :: 2",
+      ],
 
       entry_points = {
-          "console_scripts": [ 'gnajom=gnajom.cli:main' ]
+          "console_scripts": ['gnajom=gnajom.cli:main', ]
       })
 
 

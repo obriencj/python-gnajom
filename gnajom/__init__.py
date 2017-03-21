@@ -24,9 +24,10 @@ sevirces such as auth, realms, and users.
 """
 
 
-from json import load, dump, dumps
-from requests import get, post
+from json import dumps
+from requests import get, post, delete
 from requests.cookies import RequestsCookieJar
+from urllib import urlencode
 
 
 # seriously, how did people get along before requests? it's a shining
@@ -34,12 +35,12 @@ from requests.cookies import RequestsCookieJar
 # form encoding, url form encoding, all easily accessible.
 
 
-__all__ = ( "APIHost", )
+__all__ = ("APIHost", )
 
 
 class APIHost(object):
     """
-    Lightweight wrapper for JSON via GET and POST calls
+    Lightweight wrapper for RESTful JSON calls
     """
 
     def __init__(self, hosturi):
@@ -141,7 +142,7 @@ class APIHost(object):
     def post_encoded(self, endpoint, payload):
         """
         Trigger an API endpoint on the host via an HTTP POST, sending
-        payload represented as urlencoded form data. And JSON results
+        payload represented as urlencoded form data. Any JSON results
         will be parsed and returned.
         """
 
@@ -161,7 +162,6 @@ class APIHost(object):
             return resp.json()
         else:
             return None
-
 
 
 #

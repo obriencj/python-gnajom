@@ -21,11 +21,11 @@ from json import dump, load
 from requests.exceptions import HTTPError
 from uuid import uuid1
 
-from gnajom import APIHost
+from . import APIHost
 
 
-__all__ = ( "Authentication", "auth_from_file", "generate_clientToken",
-            "HOST_YGGDRASIL", "DEFAULT_AUTH_HOST", "MINECRAFT_AGENT_V1" )
+__all__ = ("Authentication", "auth_from_file", "generate_clientToken",
+           "HOST_YGGDRASIL", "DEFAULT_AUTH_HOST", "MINECRAFT_AGENT_V1", )
 
 
 HOST_YGGDRASIL = "https://authserver.mojang.com"
@@ -64,9 +64,9 @@ class Authentication(object):
         generate an accessToken for this session
         """
 
-        payload = { "username": self.username,
-                    "password": password,
-                    "requestUser": True }
+        payload = {"username": self.username,
+                   "password": password,
+                   "requestUser": True, }
 
         if self.agent:
             payload["agent"] = self.agent
@@ -102,9 +102,9 @@ class Authentication(object):
         accessToken.
         """
 
-        payload = { "accessToken": self.accessToken,
-                    "clientToken": self.clientToken,
-                    "requestUser": True }
+        payload = {"accessToken": self.accessToken,
+                   "clientToken": self.clientToken,
+                   "requestUser": True, }
 
         try:
             ret = self.api.post("/refresh", payload)
@@ -139,10 +139,10 @@ class Authentication(object):
         if not self.accessToken:
             return False
 
-        payload = { "accessToken": self.accessToken, }
+        payload = {"accessToken": self.accessToken, }
 
         try:
-            ret = self.api.post("/validate", payload)
+            self.api.post("/validate", payload)
 
         except HTTPError as err:
             # one again, 403 is an expected possibility. Everything
@@ -162,11 +162,11 @@ class Authentication(object):
         invalidates all sessions against the specified account
         """
 
-        payload = { "username": self.username,
-                    "password": password, }
+        payload = {"username": self.username,
+                   "password": password, }
 
         try:
-            ret = self.api.post("/signout", payload)
+            self.api.post("/signout", payload)
 
         except HTTPError as err:
             # 403 means bad username/password in this case
@@ -187,12 +187,12 @@ class Authentication(object):
         if not self.accessToken:
             return None
 
-        payload = { "accessToken": self.accessToken,
-                    "clientToken": self.clientToken, }
+        payload = {"accessToken": self.accessToken,
+                   "clientToken": self.clientToken, }
 
         # even if we're already invalidated, this won't raise an
         # HTTPError, so we won't try to filter out a 403
-        ret = self.api.post("/invalidate", payload)
+        self.api.post("/invalidate", payload)
 
         self.accessToken = None
         return True

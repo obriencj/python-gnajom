@@ -24,9 +24,9 @@ gnajom.realms - Python module for working with Realms servers.
 from gnajom import APIHost
 
 
-__all__ = ( "RealmsAPI",
-            "HOST_DESKTOP_REALMS", "HOST_PE_REALMS",
-            "DEFAULT_REALMS_HOST", "DEFAULT_REALMS_VERSION" )
+__all__ = ("RealmsAPI",
+           "HOST_DESKTOP_REALMS", "HOST_PE_REALMS",
+           "DEFAULT_REALMS_HOST", "DEFAULT_REALMS_VERSION", )
 
 
 HOST_DESKTOP_REALMS = "https://mcoapi.minecraft.net"
@@ -50,7 +50,7 @@ class RealmsAPI(object):
 
         # compose the necessary cookies from data in the auth object
         self.auth = auth
-        sid =  "token:%s:%s" % (auth.accessToken, auth.selectedProfile["id"])
+        sid = "token:%s:%s" % (auth.accessToken, auth.selectedProfile["id"])
         user = auth.selectedProfile["name"]
 
         self.api = APIHost(host)

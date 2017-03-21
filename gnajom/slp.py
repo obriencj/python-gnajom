@@ -25,12 +25,15 @@ List Ping portion of the protocol
 from cStringIO import StringIO
 from socket import socket
 from struct import pack, unpack
-import sys
 
 from .protocol import PROTOCOL_LATEST, read_or_raise, pack_str
 
 
 PING_KEYWORD = "MC|PingHost"
+
+
+class InvalidSLPResponse(Exception):
+    pass
 
 
 def pack_legacy_ping(buf, hostname, port, protocol_version=PROTOCOL_LATEST):
@@ -66,7 +69,7 @@ def unpack_legacy_kick(stream):
     fields = remainder.split("\0")
 
     if fields[0] != "\xa7\x31":
-        raise InavlidSLPResponse("field heading %r" % fields[0])
+        raise InvalidSLPResponse("field heading %r" % fields[0])
 
     check, proto_ver, ser_ver, motd, online, maxonline = fields
     online = ord(online)
