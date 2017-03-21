@@ -40,7 +40,10 @@ setup(name = "gnajom",
       description = "Module and command line tools for working with"
       " Mojang's public APIs",
 
-      install_requires = ["requests", "setuptools", "singledispatch", ],
+      install_requires = ["requests", "singledispatch", ],
+
+      # tests_require = ["requests", "responses", "singledispatch", ],
+      # test_suite = "tests",
 
       zip_safe = True,
 
