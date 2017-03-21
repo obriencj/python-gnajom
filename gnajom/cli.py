@@ -28,6 +28,7 @@ system.
 # and human-readable output.
 
 
+import requests
 import sys
 
 from argparse import ArgumentParser, FileType, _StoreAction, _StoreConstAction
@@ -408,7 +409,7 @@ def cli_command_realm_list(options):
         return 0
 
     servers = data["servers"]
-    for server in sorted(servers, key=lambda d:d["id"]):
+    for server in sorted(servers, key=lambda d: d["id"]):
         print _REALM_LIST_FMT.format(**server)
         if options.motd and server.get("motd"):
             print "  MotD: %s" % server["motd"]
@@ -462,10 +463,10 @@ def cli_command_realm_info(options):
 
     print "  World slots:"
     slots = info["slots"]
-    for slot in sorted(slots, key=lambda s:s["slotId"]):
+    for slot in sorted(slots, key=lambda s: s["slotId"]):
         print "    Slot %i:" % slot["slotId"]
         slot = loads(slot["options"])
-        for k,v in sorted(slot.items()):
+        for k, v in sorted(slot.items()):
             print "      %s: %s" % (k, v)
 
     player_count = 0
@@ -1006,7 +1007,7 @@ def cli_subparser_skin(parent):
     return p
 
 
-#def cli_command_blocked(options):
+# def cli_command_blocked(options):
 #    """
 #    cli: gnajom blocked
 #    """
@@ -1015,7 +1016,7 @@ def cli_subparser_skin(parent):
 #    info = api.blocked_servers()
 
 
-#def cli_subparser_blocked(parent):
+# def cli_subparser_blocked(parent):
 #    p = subparser(parent, "blocked", cli_command_blocked)
 #    optional_session_host(p)
 
@@ -1025,7 +1026,7 @@ def cli_subparser_skin(parent):
 
 def optional_realms_host(parser):
     parser.add_argument("--realms-host", action="store",
-                       help="Mojang Realms API host")
+                        help="Mojang Realms API host")
     return parser
 
 
@@ -1055,7 +1056,7 @@ def optional_auth_host(parser):
 
 def optional_json(parser):
     parser.add_argument("--json", action="store_true",
-                       help="Output results as formatted JSON")
+                        help="Output results as formatted JSON")
     return parser
 
 
@@ -1131,7 +1132,7 @@ def cli_argparser(argv=None):
     cli_subparser_user(parser)
     cli_subparser_profile(parser)
     cli_subparser_skin(parser)
-    #cli_subparser_blocked(parser)
+    # cli_subparser_blocked(parser)
 
     return parser
 
