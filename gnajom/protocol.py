@@ -22,16 +22,20 @@ server protocol
 """
 
 
+import socket
+import zlib
+
+from cStringIO import StringIO
 from functools import update_wrapper
 from singledispatch import singledispatch
-from struct import pack, unpack, Struct
-from zlib import compress, decompress
+from struct import Struct
 
 
 PROTOCOL_LATEST = 0x4a
 
 
 _B = Struct(">B")
+_H = Struct(">H")
 
 
 _PACKET_PACKERS = {}
@@ -52,30 +56,36 @@ class ProtocolUnpackException(ProtocolException):
 def read_or_raise(stream, count, exc_class):
     data = stream.read(count)
     dlen = len(data)
-    if data and dlen >= minimum:
+    if data and dlen == count:
         return data
     else:
         raise exc_class("wanted %i bytes, read %i", (count, dlen))
 
 
-def pack_str(buf, s):
-    buf.write(pack(">H", len(s)))
-    buf.write(s.encode("utf_16_be"))
+def pack_string(stream, s):
+    dat, _ = _H.pack(len(s))
+    stream.write(dat)
+    stream.write(s.encode("utf_16_be"))
+
+
+def pack_struct(stream, defn, *values):
+    dat, _ = defn.pack(*values)
+    stream.write(dat)
 
 
 def pack_varint(stream, val):
     p = _B.pack
 
     if val < 0:
-	val = (1<<32) + val
+        val = (1 << 32) + val
 
     while val >= 0x80:
-	bits = val & 0x7F
+        bits = val & 0x7F
         b, _ = p(0x80 | bits)
-	stream.write(b)
+        stream.write(b)
 
-	val >>= 7
-	bits = val & 0x7F
+        val >>= 7
+        bits = val & 0x7F
         b, _ = p(bits)
         stream.write(b)
 
@@ -92,8 +102,8 @@ def unpack_varint(stream):
         total |= ((val & 0x7f) << shift)
         shift += 7
 
-    if total & (1<<31):
-        total = total - (1<<32)
+    if total & (1 << 31):
+        total = total - (1 << 32)
 
     return total
 
@@ -105,7 +115,7 @@ def receive_packet(stream, state, compressed=False, raw=False):
     if compressed:
         # re-read the new length value for the uncompressed data
         length = unpack_varint(stream)
-        buf = StringIO(decompress(buf))
+        buf = StringIO(zlib.decompress(buf))
     else:
         buf = StringIO(buf)
 
@@ -146,7 +156,7 @@ def send_packet(stream, packet, compress=False, raw=False):
 
     if compress:
         length = len(data)
-        data = compress(data)
+        data = zlib.compress(data)
 
         buf = StringIO()
         pack_varint(buf, length)
@@ -160,8 +170,10 @@ def send_packet(stream, packet, compress=False, raw=False):
 
 def dispatch(func):
     dispatcher = singledispatch(func)
+
     def wrapper(self, *args, **kw):
         return dispatcher.dispatch(args[0].__class__)(self, *args, **kw)
+
     wrapper.register = dispatcher.register
     update_wrapper(wrapper, func)
     return wrapper
@@ -171,7 +183,7 @@ def dispatch(func):
 
 
 STATE_CLOSED = -2
-STATE_CONNECTING = -1
+STATE_CONNECTED = -1
 STATE_HANDSHAKING = 0
 STATE_STATUS = 1
 STATE_LOGIN = 2
@@ -277,7 +289,7 @@ class Handshake(ServerboundPacket):
         pack_varint(stream, self.packet_id)
         pack_varint(stream, self.protocol_version)
         pack_string(stream, self.server_address)
-        pack_struct(stream, "b", self.server_port)
+        pack_struct(stream, ">b", self.server_port)
         pack_varint(stream, self.next_state)
 
 
@@ -371,7 +383,7 @@ class ClientSession(object):
         if self.state != STATE_CLOSED:
             raise ClientStateException(STATE_CLOSED, self.state)
 
-        self.stream = socket(host, port)
+        self.stream = socket.socket(host, port)
         self.state = STATE_CONNECTED
 
 
@@ -399,27 +411,27 @@ class ClientSession(object):
 
 
     @handle.register(Response)
-    def _(self, packet):
+    def _handle_response(self, packet):
         pass
 
 
     @handle.register(Disconnect)
-    def _(self, packet):
+    def _handle_disconnect(self, packet):
         pass
 
 
     @handle.register(EncryptionRequest)
-    def _(self, packet):
+    def _handle_encrequest(self, packet):
         pass
 
 
     @handle.register(LoginSuccess)
-    def _(self, packet):
+    def _handle_loginsuccess(self, packet):
         pass
 
 
     @handle.register(SetCompression)
-    def _(self, packet):
+    def _handle_setcompress(self, packet):
         pass
 
 

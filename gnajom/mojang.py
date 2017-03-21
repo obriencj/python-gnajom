@@ -23,11 +23,12 @@ from json import loads
 from gnajom import APIHost
 
 
-__all__ = ("MojangAPI", "SessionAPI", "StatusAPI",
-           "DEFAULT_MOJANG_API_HOST", "DEFAULT_MOJANG_STESSION_HOST",
-           "DEFAULT_MOJANG_STATUS_HOST", "DEFAULT_STATISTICS",
-           "STATISTIC_MINECRAFT_SOLD", "STATISTIC_PREPAID_MINECRAFT_REDEEMED",
-           "STATISTIC_COBALT_SOLD", "STATISTIC_SCROLLS_SOLD")
+__all__ = (
+    "MojangAPI", "SessionAPI", "StatusAPI",
+    "DEFAULT_MOJANG_API_HOST", "DEFAULT_MOJANG_SESSION_HOST",
+    "DEFAULT_MOJANG_STATUS_HOST", "DEFAULT_STATISTICS",
+    "STATISTIC_MINECRAFT_SOLD", "STATISTIC_PREPAID_MINECRAFT_REDEEMED",
+    "STATISTIC_COBALT_SOLD", "STATISTIC_SCROLLS_SOLD", )
 
 
 DEFAULT_MOJANG_API_HOST = "https://api.mojang.com"
@@ -40,10 +41,11 @@ STATISTIC_PREPAID_MINECRAFT_REDEEMED = "prepaid_card_redeemed_minecraft"
 STATISTIC_COBALT_SOLD = "item_sold_cobalt"
 STATISTIC_SCROLLS_SOLD = "item_sold_scrolls"
 
-DEFAULT_STATISTICS = (STATISTIC_MINECRAFT_SOLD,
-                      STATISTIC_PREPAID_MINECRAFT_REDEEMED,
-                      STATISTIC_COBALT_SOLD,
-                      STATISTIC_SCROLLS_SOLD)
+DEFAULT_STATISTICS = (
+    STATISTIC_MINECRAFT_SOLD,
+    STATISTIC_PREPAID_MINECRAFT_REDEEMED,
+    STATISTIC_COBALT_SOLD,
+    STATISTIC_SCROLLS_SOLD, )
 
 
 class MojangAPI(object):
@@ -60,7 +62,7 @@ class MojangAPI(object):
         self.api = APIHost(host)
 
         if self.auth.accessToken:
-            bearer =  "Bearer " + self.auth.accessToken
+            bearer = "Bearer " + self.auth.accessToken
             self.api.headers["Authorization"] = bearer
 
 
@@ -81,7 +83,7 @@ class MojangAPI(object):
         payload = {"model": "slim" if slim else "",
                    "url": skin_url}
 
-        return self.api.post_encoded("/user/profile/%s/skin" % uuid)
+        return self.api.post_encoded("/user/profile/%s/skin" % uuid, payload)
 
 
     def upload_skin(self, uuid, skin_stream, slim=False):
@@ -93,7 +95,7 @@ class MojangAPI(object):
 
     def upload_skin_filename(self, uuid, skin_filename, slim=False):
         with open(skin_filename) as skin_stream:
-            return upload_skin(self, uuid, skin_stream, slim)
+            return self.upload_skin(self, uuid, skin_stream, slim)
 
 
     def reset_skin(self, uuid):
@@ -123,7 +125,7 @@ class SessionAPI(object):
         self.api = APIHost(host)
 
         if self.auth.accessToken:
-            bearer =  "Bearer " + self.auth.accessToken
+            bearer = "Bearer " + self.auth.accessToken
             self.api.headers["Authorization"] = bearer
 
 
@@ -159,7 +161,7 @@ class StatusAPI(object):
     """
 
     def __init__(self, auth, host=DEFAULT_MOJANG_STATUS_HOST):
-        self.auth = auth # unused, maybe useful in the future.
+        self.auth = auth  # unused, maybe useful in the future.
         self.api = APIHost(host)
 
 
