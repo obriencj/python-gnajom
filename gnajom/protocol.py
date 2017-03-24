@@ -203,7 +203,7 @@ class ClientStateException(Exception):
     def __init__(self, expected_state, actual_state):
         self.expected_state = expected_state
         self.actual_state = actual_state
-        super(self, ClientStateException).__init__(self, expected_state,
+        super(ClientStateException, self).__init__(self, expected_state,
                                                    actual_state)
 
 
@@ -376,14 +376,21 @@ class ClientSession(object):
     def __init__(self):
         self.state = STATE_CLOSED
         self.compression = False
-        self.stream = None
+        self.socket = None
+        self.socketin = None
+        self.socketout = None
 
 
     def open(self, host, port):
         if self.state != STATE_CLOSED:
             raise ClientStateException(STATE_CLOSED, self.state)
 
-        self.stream = socket.socket(host, port)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((host, port))
+        self.socket = sock
+        self.socket_in = sock.makefile("r+b")
+        self.socket_out = sock.makefile("w+b")
+
         self.state = STATE_CONNECTED
 
 
@@ -393,11 +400,11 @@ class ClientSession(object):
 
 
     def send(self, packet):
-        send_packet(self.stream, packet, compressed=self.compression)
+        send_packet(self.socket_out, packet, compressed=self.compression)
 
 
     def receive(self):
-        return receive_packet(self.stream, self.state,
+        return receive_packet(self.socket_in, self.state,
                               compressed=self.compression)
 
 
