@@ -58,10 +58,10 @@ tricky to distinguish which one you should use.
 
 ## Requirements
 
-- [Python] 2.6 or later (no support for Python 3, because I don't care)
+- [Python] 3.2+
 - [requests](http://docs.python-requests.org/en/latest/) for HTTP calls
 - [argparse](https://pypi.python.org/pypi/argparse) for composing the
-  nested commands and options (included in Python 2.7)
+  nested commands and options (included in Python 3.2+)
 
 
 ## Author
