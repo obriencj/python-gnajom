@@ -83,23 +83,23 @@ def legacy_slp(host, port, protocol_version=PROTOCOL_LATEST):
 
     """
 
-    print "connecting to %s %i..." % (host, port),
+    # print "connecting to %s %i..." % (host, port),
     sock = socket()
     sock.connect((host, port))
-    print "connected"
+    # print "connected"
 
     sockf = sock.makefile()
 
-    print "sending SLP...",
+    # print "sending SLP...",
     pack_legacy_ping(sockf, host, port, protocol_version)
-    print "done"
+    # print "done"
 
-    print "seceiving kick...",
+    # print "seceiving kick...",
     fields = unpack_legacy_kick(sockf)
-    print "done"
+    # print "done"
 
     sock.close()
-    print "socket closed"
+    # print "socket closed"
 
     return fields
 
