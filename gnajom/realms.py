@@ -21,7 +21,7 @@ gnajom.realms - Python module for working with Realms servers.
 """
 
 
-from gnajom import APIHost
+from . import APIHost
 
 
 __all__ = ("RealmsAPI",
