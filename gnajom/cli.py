@@ -28,6 +28,8 @@ system.
 # and human-readable output.
 
 
+from __future__ import print_function
+
 import requests
 import sys
 
@@ -110,10 +112,10 @@ def save_auth(options, auth):
     path, _ = split(session)
 
     if not exists(path):
-        makedirs(path, 0700)
+        makedirs(path, 0o700)
 
     auth.save(session)
-    chmod(session, 0600)
+    chmod(session, 0o600)
 
 
 def cli_command_auth_connect(options):
