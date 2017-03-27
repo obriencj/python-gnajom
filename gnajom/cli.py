@@ -28,8 +28,6 @@ system.
 # and human-readable output.
 
 
-from __future__ import print_function
-
 import requests
 import sys
 
