@@ -132,35 +132,35 @@ def receive_packet(stream, state, compressed=False, raw=False):
 
 
 def send_packet(stream, packet, compress=False, raw=False):
+    buf = StringIO()
+
     if raw:
         # in raw mode, the packet is just a tuple of an ID and the
         # serialized data.
 
         packet_id, data = packet
-        buf = StringIO()
         pack_varint(buf, packet_id)
         buf.write(data)
-        data = buf.getvalue()
-        buf.close()
 
     else:
         # otherwise, the packet is an actual ProtocolPacket instance,
         # and we can get the data from that
 
         packet_id = packet.PACKET_ID
-        buf = StringIO()
         pack_varint(buf, packet_id)
         packet.pack(buf)
-        data = buf.getvalue()
-        buf.close()
+
+    data = buf.getvalue()
+    buf.close()
 
     if compress:
-        length = len(data)
-        data = zlib.compress(data)
+        # if compression is enabled, we have to wrap the data up with
+        # its uncompressed length (which seems really redundant, but
+        # whatever)
 
         buf = StringIO()
-        pack_varint(buf, length)
-        buf.write(data)
+        pack_varint(buf, len(data))
+        buf.write(zlib.compress(data))
         data = buf.getvalue()
         buf.close()
 
@@ -249,6 +249,14 @@ class ProtocolPacketMeta(type):
 
 class ProtocolPacket(object):
     __metaclass__ = ProtocolPacketMeta
+
+    def verify_state(self, clientsession):
+        want_state = self.PACKET_STATE
+        have_state = clientsession.state
+        if want_state != have_state:
+            raise ClientStateException(want_state, have_state)
+        else:
+            return True
 
 
 class ClientboundPacket(ProtocolPacket):
@@ -394,22 +402,28 @@ class ClientSession(object):
         self.state = STATE_CONNECTED
 
 
-    def handshake(self):
-        if self.state != STATE_CONNECTED:
-            raise ClientStateException(STATE_CONNECTED, self.state)
+    def send(self, packet, verify_state=True):
+        if verify_state:
+            packet.verify_state(self)
 
-
-    def send(self, packet):
         send_packet(self.socket_out, packet, compressed=self.compression)
 
 
-    def receive(self):
-        return receive_packet(self.socket_in, self.state,
-                              compressed=self.compression)
+    def receive(self, verify_state=True):
+        packet = receive_packet(self.socket_in, self.state,
+                                compressed=self.compression)
+        if verify_state:
+            packet.verify_state(self)
+
+        return packet
 
 
-    def receive_and_handle(self):
-        return self.handle(self.receive())
+    def receive_and_handle(self, verify=True):
+        return self.handle(self.receive(verify))
+
+
+    def handshake(self):
+        pass
 
 
     @dispatch
@@ -417,13 +431,13 @@ class ClientSession(object):
         raise NotImplemented("no handler for %r" % type(packet))
 
 
-    @handle.register(Response)
-    def _handle_response(self, packet):
+    @handle.register(Disconnect)
+    def _handle_disconnect(self, packet):
         pass
 
 
-    @handle.register(Disconnect)
-    def _handle_disconnect(self, packet):
+    @handle.register(Response)
+    def _handle_response(self, packet):
         pass
 
 
