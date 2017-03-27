@@ -22,11 +22,13 @@ List Ping portion of the protocol
 """
 
 
+from __future__ import print_function
+
 from io import StringIO
 from socket import socket
 from struct import pack, unpack
 
-from .protocol import PROTOCOL_LATEST, read_or_raise, pack_str
+from .protocol import PROTOCOL_LATEST, read_or_raise, pack_string
 
 
 PING_KEYWORD = "MC|PingHost"
@@ -39,13 +41,13 @@ class InvalidSLPResponse(Exception):
 def pack_legacy_ping(buf, hostname, port, protocol_version=PROTOCOL_LATEST):
     tmp = StringIO()
     tmp.write(pack(">B", protocol_version))
-    pack_str(tmp, hostname)
+    pack_string(tmp, hostname)
     tmp.write(pack(">I", port))
     tail = tmp.getvalue()
     tmp.close()
 
     buf.write(pack(">BBB", 0xFE, 0x01, 0xFE))
-    pack_str(buf, PING_KEYWORD)
+    pack_string(buf, PING_KEYWORD)
     buf.write(pack(">H", len(tail)))
     buf.write(tail)
 
@@ -83,23 +85,23 @@ def legacy_slp(host, port, protocol_version=PROTOCOL_LATEST):
 
     """
 
-    # print "connecting to %s %i..." % (host, port),
+    print("connecting to %s %i..." % (host, port), end="")
     sock = socket()
     sock.connect((host, port))
-    # print "connected"
+    print("connected")
 
     sockf = sock.makefile()
 
-    # print "sending SLP...",
+    print("sending SLP...", end="")
     pack_legacy_ping(sockf, host, port, protocol_version)
-    # print "done"
+    print("done")
 
-    # print "seceiving kick...",
+    print("seceiving kick...", end="")
     fields = unpack_legacy_kick(sockf)
-    # print "done"
+    print("done")
 
     sock.close()
-    # print "socket closed"
+    print("socket closed")
 
     return fields
 
