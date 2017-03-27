@@ -1,4 +1,4 @@
-#! /usr/bin/env python2
+#! /usr/bin/env python3
 
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as
@@ -47,7 +47,7 @@ setup(name = "gnajom",
 
       zip_safe = True,
 
-      use_2to3 = True,
+      # use_2to3 = True,
 
       classifiers = [
           "Environment :: Console",

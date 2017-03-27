@@ -27,7 +27,7 @@ sevirces such as auth, realms, and users.
 from json import dumps
 from requests import get, post, delete
 from requests.cookies import RequestsCookieJar
-from urllib import urlencode
+from urllib.parse import urlencode
 
 
 # seriously, how did people get along before requests? it's a shining

@@ -25,7 +25,7 @@ server protocol
 import socket
 import zlib
 
-from cStringIO import StringIO
+from io import StringIO
 from functools import update_wrapper
 from singledispatch import singledispatch
 from struct import Struct
@@ -247,9 +247,7 @@ class ProtocolPacketMeta(type):
         return ProtocolPacket.__new__(pclass)
 
 
-class ProtocolPacket(object):
-    __metaclass__ = ProtocolPacketMeta
-
+class ProtocolPacket(object, metaclass=ProtocolPacketMeta):
     def verify_state(self, clientsession):
         want_state = self.PACKET_STATE
         have_state = clientsession.state

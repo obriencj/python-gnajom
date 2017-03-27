@@ -22,7 +22,7 @@ List Ping portion of the protocol
 """
 
 
-from cStringIO import StringIO
+from io import StringIO
 from socket import socket
 from struct import pack, unpack
 

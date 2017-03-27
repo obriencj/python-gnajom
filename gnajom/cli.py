@@ -34,13 +34,13 @@ import sys
 from argparse import ArgumentParser, FileType, _StoreAction, _StoreConstAction
 from datetime import datetime
 from getpass import getpass
-from itertools import imap
+
 from json import dump, loads
 from os import chmod, makedirs
 from os.path import basename, exists, expanduser, split
 from requests.exceptions import HTTPError
 from time import sleep
-from ConfigParser import SafeConfigParser
+from configparser import SafeConfigParser
 
 from .auth import Authentication, DEFAULT_AUTH_HOST
 
@@ -87,7 +87,7 @@ def pretty(obj, out=sys.stdout):
     """
 
     dump(obj, out, indent=4, separators=(', ', ': '), sort_keys=True)
-    print >> out
+    print(file=out)
 
 
 # --- gnajom auth commands ---
@@ -121,7 +121,7 @@ def cli_command_auth_connect(options):
     cli: gnajom auth connect
     """
 
-    print "cli_command_auth_connect", options.username, options.session_file
+    print("cli_command_auth_connect", options.username, options.session_file)
 
     auth = options.auth
 
@@ -163,7 +163,7 @@ def cli_command_auth_connect(options):
         return 0
 
     else:
-        print >> sys.stderr, "Error: Bad username or password"
+        print("Error: Bad username or password", file=sys.stderr)
         return 1
 
 
@@ -194,10 +194,10 @@ def cli_command_auth_validate(options):
     auth = options.auth
 
     if auth.validate():
-        print "Session is valid"
+        print("Session is valid")
         return 0
     else:
-        print "Session is no longer valid"
+        print("Session is no longer valid")
         return -1
 
 
@@ -214,7 +214,7 @@ def cli_command_auth_refresh(options):
     auth = options.auth
 
     if not auth.accessToken:
-        print "No session data"
+        print("No session data")
         return -1
 
     if options.force or not auth.validate():
@@ -222,7 +222,7 @@ def cli_command_auth_refresh(options):
             save_auth(options, auth)
             return 0
         else:
-            print >> sys.stderr, "Could not refresh session."
+            print("Could not refresh session.", file=sys.stderr)
             return 1
     else:
         # we weren't told to force refresh, and the session is still
@@ -247,7 +247,7 @@ def cli_command_auth_invalidate(options):
     auth = options.auth
 
     if not auth.accessToken:
-        print "No session data"
+        print("No session data")
         return -1
     else:
         auth.invalidate()
@@ -326,28 +326,28 @@ def cli_command_auth_show(options):
         def hide(x):
             return x if options.unsafe else "HIDDEN"
 
-        print "Session file: %s" % options.session_file
-        print "  auth_host:", auth.api._host
-        print "  username:", auth.username
-        print "  id:", auth.user["id"]
-        print "  clientToken:", auth.clientToken
-        print "  accessToken:", hide(auth.accessToken)
-        print "  selectedProfile:"
-        print "    name:", auth.selectedProfile["name"]
-        print "    id:", auth.selectedProfile["id"]
-        print "  agent:"
-        print "    name:", auth.agent["name"]
-        print "    version:", auth.agent["version"]
+        print("Session file: %s" % options.session_file)
+        print("  auth_host:", auth.api._host)
+        print("  username:", auth.username)
+        print("  id:", auth.user["id"])
+        print("  clientToken:", auth.clientToken)
+        print("  accessToken:", hide(auth.accessToken))
+        print("  selectedProfile:")
+        print("    name:", auth.selectedProfile["name"])
+        print("    id:", auth.selectedProfile["id"])
+        print("  agent:")
+        print("    name:", auth.agent["name"])
+        print("    version:", auth.agent["version"])
 
         props = auth.user["properties"]
         if props:
-            print "  properties:"
+            print("  properties:")
 
             if not options.unsafe:
                 props = (_hide_sensitive(prop) for prop in props)
 
             for p in props:
-                print "    %s: %s" % (p["name"], p["value"])
+                print("    %s: %s" % (p["name"], p["value"]))
 
     return 0
 
@@ -410,15 +410,15 @@ def cli_command_realm_list(options):
 
     servers = data["servers"]
     for server in sorted(servers, key=lambda d: d["id"]):
-        print _REALM_LIST_FMT.format(**server)
+        print(_REALM_LIST_FMT.format(**server))
         if options.motd and server.get("motd"):
-            print "  MotD: %s" % server["motd"]
+            print("  MotD: %s" % server["motd"])
 
         if options.players:
             players = server["players"] or tuple()
-            print "  %i players online" % len(players)
+            print("  %i players online" % len(players))
             if players:
-                print "    \n".join(sorted(players))
+                print("    \n".join(sorted(players)))
 
     return 0
 
@@ -453,21 +453,21 @@ def cli_command_realm_info(options):
         pretty(info)
         return 0
 
-    print _REALM_LIST_FMT.format(**info)
+    print(_REALM_LIST_FMT.format(**info))
     if info["motd"]:
-        print "  MotD:", info["motd"]
+        print("  MotD:", info["motd"])
 
-    print "  Info:"
+    print("  Info:")
     for k in _REALM_INFO_KEYS:
-        print "    %s: %s" % (k, info[k])
+        print("    %s: %s" % (k, info[k]))
 
-    print "  World slots:"
+    print("  World slots:")
     slots = info["slots"]
     for slot in sorted(slots, key=lambda s: s["slotId"]):
-        print "    Slot %i:" % slot["slotId"]
+        print("    Slot %i:" % slot["slotId"])
         slot = loads(slot["options"])
         for k, v in sorted(slot.items()):
-            print "      %s: %s" % (k, v)
+            print("      %s: %s" % (k, v))
 
     player_count = 0
     player_online = 0
@@ -476,16 +476,16 @@ def cli_command_realm_info(options):
         if player["online"]:
             player_online += 1
 
-    print "  Players: %i/%i Online" % (player_online, player_count)
+    print("  Players: %i/%i Online" % (player_online, player_count))
     for player in info["players"]:
-        print "    ", player["name"],
+        print("    ", player["name"], end=' ')
         if player["operator"]:
-            print "[op]",
+            print("[op]", end=' ')
         if player["online"]:
-            print "[online]",
+            print("[online]", end=' ')
         if not player["accepted"]:
-            print "[pending]",
-        print
+            print("[pending]", end=' ')
+        print()
 
 
 def cli_subparser_realm_info(parent):
@@ -539,9 +539,9 @@ def cli_command_realm_knock(options):
     if options.json:
         pretty(data)
     elif "pending" in data:
-        print "Server is coming online"
+        print("Server is coming online")
     else:
-        print "Server is online at", data["address"]
+        print("Server is online at", data["address"])
 
     return 0
 
@@ -578,14 +578,14 @@ def cli_command_realm_legacyping(options):
         data = data["ip"]
 
     if not data:
-        print "Server is offline"
+        print("Server is offline")
         return -1
 
     addr, port = data.split(":")
     port = int(port)
 
     fields = legacy_slp(addr, port)
-    print repr(fields)
+    print(repr(fields))
 
 
 def cli_subparser_realm_legacyping(parent):
@@ -607,7 +607,7 @@ def cli_command_realm_backups(options):
     """
 
     api = realms_api(options)
-    print api.realm_backups(options.realm_id)
+    print(api.realm_backups(options.realm_id))
     return 0
 
 
@@ -630,11 +630,11 @@ def cli_command_realm_download(options):
     dl = url.get("downloadLink")
 
     if not url:
-        print "Could not get download link for specified realm/world"
+        print("Could not get download link for specified realm/world")
         return -1
 
     if options.just_url:
-        print dl
+        print(dl)
         return 0
 
     filename = options.filename
@@ -646,11 +646,11 @@ def cli_command_realm_download(options):
                 out.write(chunk)
                 total_size += len(chunk)
     except Exception as e:
-        print e
+        print(e)
         return -1
 
     else:
-        print "Saved world to %s (size: %i)" % (filename, total_size)
+        print("Saved world to %s (size: %i)" % (filename, total_size))
         return 0
 
 
@@ -733,9 +733,9 @@ def cli_command_user_whoami(options):
                 val = info[key] // 1000
                 info[key] = datetime.utcfromtimestamp(val)
 
-        print "Authenticated:"
+        print("Authenticated:")
         for k, v in sorted(info.items()):
-            print "  %s: %s" % (k, v)
+            print("  %s: %s" % (k, v))
 
     return 0
 
@@ -752,7 +752,7 @@ def cli_command_user_history(options):
     cli: gnajom user history
     """
 
-    print "NYI"
+    print("NYI")
     return 0
 
 
@@ -775,7 +775,7 @@ def cli_command_user_profile(options):
     if options.json:
         pretty(info)
     elif info:
-        print "%s %s" % (info["name"], info["id"])
+        print("%s %s" % (info["name"], info["id"]))
 
     return 0
 
@@ -812,7 +812,7 @@ def cli_command_profile_lookup(options):
     search = set(options.search_players)
     if options.from_file:
         search.update(line for line in
-                      imap(str.strip, options.from_file) if line)
+                      map(str.strip, options.from_file) if line)
 
     if not search:
         return 0
@@ -824,7 +824,7 @@ def cli_command_profile_lookup(options):
         pretty(found)
     else:
         for f in found:
-            print "%s %s" % (f["name"], f["id"])
+            print("%s %s" % (f["name"], f["id"]))
     return 0
 
 
@@ -905,11 +905,11 @@ def cli_command_status(options):
         pretty(stat)
 
     else:
-        print "Services:"
+        print("Services:")
         for s in stat:
-            for k, v in s.iteritems():
+            for k, v in s.items():
                 k = _SERVICE_NAMES.get(k, k)
-                print "  %s: %s" % (k, v)
+                print("  %s: %s" % (k, v))
 
     return 0
 
@@ -934,9 +934,9 @@ def cli_command_statistics(options):
         pretty(stat)
 
     else:
-        print "Statistics:"
-        for k, v in stat.iteritems():
-            print "  %s: %s" % (k, v)
+        print("Statistics:")
+        for k, v in stat.items():
+            print("  %s: %s" % (k, v))
 
     return 0
 
@@ -954,7 +954,7 @@ def cli_command_skin_change(options):
     cli: gnajom skin reset
     """
 
-    print "NYI"
+    print("NYI")
     return 0
 
 
@@ -970,7 +970,7 @@ def cli_command_skin_upload(options):
     cli: gnajom skin reset
     """
 
-    print "NYI"
+    print("NYI")
     return 0
 
 
@@ -986,7 +986,7 @@ def cli_command_skin_reset(options):
     cli: gnajom skin reset
     """
 
-    print "NYI"
+    print("NYI")
     return 0
 
 
@@ -1159,16 +1159,15 @@ def main(argv=None):
         return options.cli_func(options) or 0
 
     except SessionInvalid:
-        print >> sys.stderr, \
-            "Current session invalid. Try running" \
-            " `gnajom auth connect --refresh`"
+        print("Current session invalid. Try running"
+              " `gnajom auth connect --refresh`", file=sys.stderr)
         return 1
 
     except HTTPError as http_err:
         if http_err.response.status_code == 429:
             # this is a somewhat expected occurance, so we want to
             # handle it more gracefully than with a backtrace.
-            print >> sys.stderr, http_err
+            print(http_err, file=sys.stderr)
             return 1
 
         else:
@@ -1176,7 +1175,7 @@ def main(argv=None):
             raise
 
     except KeyboardInterrupt:
-        print >> sys.stderr
+        print(file=sys.stderr)
         return 130
 
 
