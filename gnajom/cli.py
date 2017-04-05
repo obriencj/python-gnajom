@@ -322,9 +322,10 @@ def cli_command_auth_show(options):
         if not options.unsafe:
             show["accessToken"] = "HIDDEN"
 
-            props = show["user"]["properties"]
-            props = [_hide_sensitive(prop) for prop in props]
-            show["user"]["properties"] = props
+            props = show["user"].get("properties", None)
+            if props is not None:
+                props = [_hide_sensitive(prop) for prop in props]
+                show["user"]["properties"] = props
 
         pretty(show)
 
@@ -345,7 +346,7 @@ def cli_command_auth_show(options):
         print("    name:", auth.agent["name"])
         print("    version:", auth.agent["version"])
 
-        props = auth.user["properties"]
+        props = auth.user.get("properties", None)
         if props:
             print("  properties:")
 
@@ -1094,7 +1095,7 @@ def subparser(parser, name, cli_func=None, help=None):
         subs = parser.add_subparsers()
 
     # create the subparser for the command
-    sp = subs.add_parser(name, help=help)
+    sp = subs.add_parser(name, help=help, description=help)
 
     # "inherit" the parent command optional arguments
     for act in parser._subparsers._actions:
