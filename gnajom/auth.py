@@ -254,7 +254,7 @@ def generate_clientToken():
     Generate a random clientToken string via UUID
     """
 
-    return uuid1().bytes.encode("hex")
+    return uuid1().hex
 
 
 #

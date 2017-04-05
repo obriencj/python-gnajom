@@ -461,7 +461,7 @@ def cli_command_realm_info(options):
 
     print("  Info:")
     for k in _REALM_INFO_KEYS:
-        print("    %s: %s" % (k, info[k]))
+        print("    %s: %s" % (k, info.get(k, "")))
 
     print("  World slots:")
     slots = info["slots"]
@@ -515,7 +515,7 @@ def _do_realm_knock(api, realm_id, no_wait=False):
                     # want to wait for it to wake, so make up
                     # something and stop retrying.
                     retry = False
-                    data = {'address': None, 'pending': True}
+                    data = {'address': None, 'pendingUpdate': False, }}
                 else:
                     # we'll give the realms service a moment to create
                     # and start up a server for our realm
