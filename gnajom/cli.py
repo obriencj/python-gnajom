@@ -515,7 +515,7 @@ def _do_realm_knock(api, realm_id, no_wait=False):
                     # want to wait for it to wake, so make up
                     # something and stop retrying.
                     retry = False
-                    data = {'address': None, 'pendingUpdate': False, }}
+                    data = {'address': None, 'pendingUpdate': False, }
                 else:
                     # we'll give the realms service a moment to create
                     # and start up a server for our realm
