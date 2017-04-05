@@ -122,8 +122,6 @@ def cli_command_auth_connect(options):
     cli: gnajom auth connect
     """
 
-    print("cli_command_auth_connect", options.username, options.session_file)
-
     auth = options.auth
 
     if options.refresh and auth.accessToken:
@@ -169,7 +167,9 @@ def cli_command_auth_connect(options):
 
 
 def cli_subparser_auth_connect(parent):
-    p = subparser(parent, "connect", cli_command_auth_connect)
+    p = subparser(parent, "connect", cli_command_auth_connect,
+                  help="Connect and create a new auth session")
+
     optional_auth_host(p)
 
     p.add_argument("--refresh", action="store_true", default=False,
@@ -203,7 +203,8 @@ def cli_command_auth_validate(options):
 
 
 def cli_subparser_auth_validate(parent):
-    p = subparser(parent, "validate", cli_command_auth_validate)
+    p = subparser(parent, "validate", cli_command_auth_validate,
+                  help="Check that the current auth session is valid")
     return p
 
 
@@ -232,7 +233,8 @@ def cli_command_auth_refresh(options):
 
 
 def cli_subparser_auth_refresh(parent):
-    p = subparser(parent, "refresh", cli_command_auth_refresh)
+    p = subparser(parent, "refresh", cli_command_auth_refresh,
+                  help="Refreshes current auth session")
 
     p.add_argument("--force", action="store_true",
                    help="refresh even if session is valid")
@@ -257,7 +259,8 @@ def cli_command_auth_invalidate(options):
 
 
 def cli_subparser_auth_invalidate(parent):
-    p = subparser(parent, "invalidate", cli_command_auth_invalidate)
+    p = subparser(parent, "invalidate", cli_command_auth_invalidate,
+                  help="Invalidate the current auth session")
     return p
 
 
@@ -277,7 +280,9 @@ def cli_command_auth_signout(options):
 
 
 def cli_subparser_auth_signout(parent):
-    p = subparser(parent, "signout", cli_command_auth_signout)
+    p = subparser(parent, "signout", cli_command_auth_signout,
+                  help="Sign out all sessions for this account")
+
     optional_auth_host(p)
 
     p.add_argument("--user", action="store", dest="username",
@@ -354,7 +359,9 @@ def cli_command_auth_show(options):
 
 
 def cli_subparser_auth_show(parent):
-    p = subparser(parent, "show", cli_command_auth_show)
+    p = subparser(parent, "show", cli_command_auth_show,
+                  help="Print authentication information")
+
     optional_json(p)
 
     p.add_argument("--unsafe", action="store_true",
@@ -426,7 +433,9 @@ def cli_command_realm_list(options):
 
 
 def cli_subparser_realm_list(parent):
-    p = subparser(parent, "list", cli_command_realm_list)
+    p = subparser(parent, "list", cli_command_realm_list,
+                  help="Print realms available to current user")
+
     optional_json(p)
 
     p.add_argument("--players", action="store_true", default=False,
@@ -491,7 +500,9 @@ def cli_command_realm_info(options):
 
 
 def cli_subparser_realm_info(parent):
-    p = subparser(parent, "info", cli_command_realm_info)
+    p = subparser(parent, "info", cli_command_realm_info,
+                  help="Print detailed information about a realm")
+
     optional_json(p)
 
     p.add_argument("realm_id", action="store", type=int)
@@ -549,7 +560,9 @@ def cli_command_realm_knock(options):
 
 
 def cli_subparser_realm_knock(parent):
-    p = subparser(parent, "knock", cli_command_realm_knock)
+    p = subparser(parent, "knock", cli_command_realm_knock,
+                  help="Ensure a realm is running, print its IP Address")
+
     optional_json(p)
 
     p.add_argument("realm_id", action="store", type=int)
@@ -591,7 +604,8 @@ def cli_command_realm_legacyping(options):
 
 
 def cli_subparser_realm_legacyping(parent):
-    p = subparser(parent, "legacyping", cli_command_realm_legacyping)
+    p = subparser(parent, "legacyping", cli_command_realm_legacyping,
+                  help="Get data from a legacy ping on a realm")
     optional_json(p)
 
     p.add_argument("realm_id", action="store", type=int)
@@ -614,7 +628,8 @@ def cli_command_realm_backups(options):
 
 
 def cli_subparser_realm_backups(parent):
-    p = subparser(parent, "backups", cli_command_realm_backups)
+    p = subparser(parent, "backups", cli_command_realm_backups,
+                  help="List available backups for a realm")
 
     p.add_argument("realm_id", action="store", type=int)
 
@@ -657,7 +672,8 @@ def cli_command_realm_download(options):
 
 
 def cli_subparser_realm_download(parent):
-    p = subparser(parent, "download", cli_command_realm_download)
+    p = subparser(parent, "download", cli_command_realm_download,
+                  help="Download world data from a realm")
 
     p.add_argument("realm_id", action="store", type=int)
     p.add_argument("world_number", action="store", type=int)
@@ -668,7 +684,9 @@ def cli_subparser_realm_download(parent):
 
 
 def cli_subparser_realms(parent):
-    p = subparser(parent, "realm")
+    p = subparser(parent, "realm",
+                  help="Commands related to Mojang's Minecraft Realms")
+
     optional_realms_host(p)
 
     cli_subparser_realm_list(p)
