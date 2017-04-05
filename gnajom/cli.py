@@ -36,7 +36,6 @@ import sys
 from argparse import ArgumentParser, FileType, _StoreAction, _StoreConstAction
 from datetime import datetime
 from getpass import getpass
-
 from json import dump, loads
 from os import chmod, makedirs
 from os.path import basename, exists, expanduser, split
@@ -365,7 +364,8 @@ def cli_subparser_auth_show(parent):
 
 
 def cli_subparser_auth(parent):
-    p = subparser(parent, "auth")
+    p = subparser(parent, "auth",
+                  help="Commands related to authentication")
 
     cli_subparser_auth_connect(p)
     cli_subparser_auth_validate(p)
@@ -1086,9 +1086,13 @@ def subparser(parser, name, cli_func=None, help=None):
     # "inherit" the parent command defaults
     sp._defaults.update(parser._defaults)
 
+    if cli_func is None:
+        def cli_func(_):
+            sp.print_usage(sys.stderr)
+            return 1
+
     # set the cli handler function for this command
-    if cli_func:
-        sp.set_defaults(cli_func=cli_func)
+    sp.set_defaults(cli_func=cli_func)
 
     return sp
 
@@ -1117,6 +1121,14 @@ def cli_argparser(argv=None):
     config = SafeConfigParser()
     if config.read([options.config]):
         parser.set_defaults(**dict(config.items("defaults")))
+
+    # the cli_func default is used when no subparser is triggered. In
+    # this case, we just want it to print out the usage message
+    def cli_func(_):
+        parser.print_usage(sys.stderr)
+        return 1
+
+    parser.set_defaults(cli_func=cli_func)
 
     # this argument doesn't do anything, we just want it visible for
     # invocations of --help, any actual loading of the config put data
