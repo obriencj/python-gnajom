@@ -678,7 +678,8 @@ def cli_subparser_realm_download(parent):
 
     p.add_argument("realm_id", action="store", type=int)
     p.add_argument("world_number", action="store", type=int)
-    p.add_argument("--just-url", action="store_true")
+    p.add_argument("--just-url", action="store_true", default=False,
+                   help="print the URL rather than actually downloading")
     p.add_argument("--filename", action="store", default="mc_world.tar.gz")
 
     return p
@@ -877,13 +878,13 @@ def cli_subparser_profile_lookup(parent):
     return p
 
 
-def cli_command_profile_info(options):
+def _fetch_profile(options):
     """
-    cli: gnajom profile info
-    """
+    This is used by a few commands to fetch profile data either by
+    UUID or by username.
 
-    # TODO: we need to cache this and only call to the API if the
-    # cached copy is more than 60 seconds old.
+    It presumes that the options will have profile_uuid and by_name
+    """
 
     if options.by_name:
         api = mojang_api(options)
@@ -893,9 +894,28 @@ def cli_command_profile_info(options):
     else:
         uuid = options.profile_uuid
 
+    # TODO: we need to cache this and only call to the API if the
+    # cached copy is more than 60 seconds old.
+
     api = session_api(options)
     info = api.profile_info(uuid)
-    pretty(info)
+
+    return info
+
+
+def cli_command_profile_info(options):
+    """
+    cli: gnajom profile info
+    """
+
+    info = _fetch_profile(options)
+
+    if options.json:
+        pretty(info)
+
+    else:
+        for item in info:
+            print("%s: %r" % item)
 
     return 0
 
@@ -1059,13 +1079,85 @@ def cli_subparser_skin_reset(parent):
     return p
 
 
+def cli_command_skin_download(options):
+    """
+    cli: gnajom skin download
+    """
+
+    uuid = options.profile_uuid
+    if not uuid:
+        if options.by_name:
+            uuid = options.auth.selectedProfile["name"]
+        else:
+            uuid = options.auth.selectedProfile["id"]
+
+    info = _fetch_profile(options)
+    if not info:
+        print("Profile not found: %s" % uuid)
+        return 1
+
+    texture = None
+    for prop in info.get("properties", ()):
+        if prop["name"] == "textures":
+            texture = prop["value"]
+            break
+    else:
+        print("Profile has no texture data")
+        return 0
+
+    skin_url = texture["textures"]["SKIN"]["url"]
+
+    if options.just_url:
+        print(skin_url)
+        return 0
+
+    filename = options.filename or ("%s.png" % info["name"])
+    total_size = 0
+    try:
+        resp = requests.get(skin_url, stream=True)
+        with open(filename, "wb") as out:
+            for chunk in resp.iter_content(chunk_size=2**20):
+                out.write(chunk)
+                total_size += len(chunk)
+
+    except Exception as e:
+        print(e)
+        return -1
+
+    else:
+        print("Saved skin to %s (size: %i)" % (filename, total_size))
+        return 0
+
+
+def cli_subparser_skin_download(parent):
+    p = subparser(parent, "download", cli_command_skin_download,
+                  help="Download the skin for a profile")
+
+    optional_api_host(p)
+
+    p.add_argument("profile_uuid", nargs="?", action="store",
+                   help="profile to fetch skin from (defaults to auth"
+                   " profile)")
+
+    p.add_argument("--by-name", action="store_true", default=False,
+                   help="profile specified by name instead of UUID")
+
+    p.add_argument("--just-url", action="store_true", default=False,
+                   help="print the URL rather than actually downloading")
+
+    p.add_argument("--filename", action="store", default=None,
+                   help="filename to save to, defaults to profile name")
+
+    return p
+
+
 def cli_subparser_skin(parent):
     p = subparser(parent, "skin")
 
     cli_subparser_skin_change(p)
     cli_subparser_skin_upload(p)
     cli_subparser_skin_reset(p)
-    # cli_subparser_skin_download(p)
+    cli_subparser_skin_download(p)
 
     return p
 
