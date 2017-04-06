@@ -787,7 +787,7 @@ def cli_subparser_user_history(parent):
 
 def cli_command_user_profile(options):
     """
-    cli: gnajom player info
+    cli: gnajom user profile
     """
 
     api = mojang_api(options)
@@ -809,7 +809,7 @@ def cli_subparser_user_profile(parent):
     p.add_argument("search_username",
                    help="username to search for")
 
-    p.add_argument("--time", default=0, type=int,
+    p.add_argument("--time", default=None, type=int,
                    help="timestamp to search at")
 
     return p
@@ -991,13 +991,27 @@ def cli_command_skin_upload(options):
     cli: gnajom skin reset
     """
 
-    print("NYI")
+    api = mojang_api(options)
+
+    uuid = None
+    res = api.upload_skin(uuid, options.skin_file, options.slim)
+
+    print(res)
+
     return 0
 
 
 def cli_subparser_skin_upload(parent):
-    p = subparser(parent, "upload", cli_command_skin_upload)
+    p = subparser(parent, "upload", cli_command_skin_upload,
+                  help="Upload a file and set it as the profile skin")
+
     optional_api_host(p)
+
+    p.add_argument("skin_file", action="store", type=FileType('rb'),
+                   help="Skin image file")
+
+    p.add_argument("--slim-model", action="store_true",
+                   help="Use the slim (Alex) model with this skin")
 
     return p
 
