@@ -144,6 +144,7 @@ class SessionAPI(object):
                     # value since we know it's actually JSON
                     val = prop.get("value")
                     val = b64decode(val)
+                    val = val.decode()
                     val = loads(val)
                     prop["value"] = val
                     break
