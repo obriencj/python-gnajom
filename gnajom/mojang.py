@@ -66,9 +66,13 @@ class MojangAPI(object):
             self.api.headers["Authorization"] = bearer
 
 
-    def username_to_uuid(self, username, at_time=0):
-        return self.api.get("/users/profiles/minecraft/%s?at=%i" %
-                            (username, at_time))
+    def username_to_uuid(self, username, at_time=None):
+        if at_time is not None:
+            return self.api.get("/users/profiles/minecraft/%s?at=%i" %
+                                (username, at_time))
+        else:
+            return self.api.get("/users/profiles/minecraft/%s" %
+                                username)
 
 
     def uuid_name_history(self, uuid):
