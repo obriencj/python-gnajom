@@ -791,14 +791,28 @@ def cli_command_user_profile(options):
     """
 
     api = mojang_api(options)
-    info = api.username_to_uuid(options.search_username, options.time)
+
+    try:
+        info = api.username_to_uuid(options.search_username, options.time)
+
+    except HTTPError as http_err:
+        if http_err.response.status_code == 404:
+            info = None
+        else:
+            raise
 
     if options.json:
         pretty(info)
-    elif info:
-        print("%s %s" % (info["name"], info["id"]))
+        return 0
 
-    return 0
+    elif info:
+        print(info["name"], info["id"])
+        return 0
+
+    else:
+        msg = "No match for username: %s" % options.search_username
+        print(msg, file=sys.stderr)
+        return 1
 
 
 def cli_subparser_user_profile(parent):
@@ -871,19 +885,32 @@ def cli_command_profile_info(options):
     # TODO: we need to cache this and only call to the API if the
     # cached copy is more than 60 seconds old.
 
+    if options.by_name:
+        api = mojang_api(options)
+        found = api.username_to_uuid(options.profile_uuid, None)
+        uuid = found.get("id", None)
+
+    else:
+        uuid = options.profile_uuid
+
     api = session_api(options)
-    info = api.profile_info(options.uuid)
+    info = api.profile_info(uuid)
     pretty(info)
 
     return 0
 
 
 def cli_subparser_profile_info(parent):
-    p = subparser(parent, "info", cli_command_profile_info)
+    p = subparser(parent, "info", cli_command_profile_info,
+                  help="Show information about a profile")
+
     optional_api_host(p)
     optional_json(p)
 
-    p.add_argument("uuid", action="store")
+    p.add_argument("profile_uuid", action="store")
+
+    p.add_argument("--by-name", action="store_true",
+                   help="specify profile by name instead of by UUID")
 
     return p
 
@@ -1038,6 +1065,7 @@ def cli_subparser_skin(parent):
     cli_subparser_skin_change(p)
     cli_subparser_skin_upload(p)
     cli_subparser_skin_reset(p)
+    # cli_subparser_skin_download(p)
 
     return p
 
