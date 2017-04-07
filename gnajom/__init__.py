@@ -164,5 +164,25 @@ class APIHost(object):
             return None
 
 
+def enable_api_cache(fileprefix, cachetype, expiry):
+    try:
+        from requests_cache import install_cache
+        install_cache(fileprefix, cachetype, expiry)
+    except ImportError as ie:
+        return False
+    else:
+        return True
+
+
+def disable_api_cache():
+    try:
+        from requests_cache import uninstall_cache
+        uninstall_cache()
+    except ImportError as ie:
+        return False
+    else:
+        return True
+
+
 #
 # The end.

@@ -45,6 +45,10 @@ setup(name = "gnajom",
       # tests_require = ["requests", "responses", "singledispatch", ],
       # test_suite = "tests",
 
+      extras_require = {
+          "api_cache": ["requests_cache", ],
+      },
+
       zip_safe = True,
 
       # use_2to3 = True,

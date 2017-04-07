@@ -43,6 +43,8 @@ from requests.exceptions import HTTPError
 from time import sleep
 from configparser import SafeConfigParser
 
+from . import enable_api_cache, disable_api_cache
+
 from .auth import Authentication, DEFAULT_AUTH_HOST
 
 from .realms import RealmsAPI, DEFAULT_REALMS_HOST, DEFAULT_REALMS_VERSION
@@ -58,6 +60,11 @@ DEFAULT_CONFIG_FILE = expanduser("~/.gnajom/gnajom.conf")
 DEFAULT_SESSION_FILE = expanduser("~/.gnajom/session")
 
 
+DEFAULT_CACHE_FILE = expanduser("~/.gnajom/api_cache")
+DEFAULT_CACHE_TYPE = "sqlite"
+DEFAULT_CACHE_EXPIRY = 600  # in seconds
+
+
 DEFAULTS = {
     "username": None,
     "config_file": DEFAULT_CONFIG_FILE,
@@ -68,6 +75,9 @@ DEFAULTS = {
     "api_host": DEFAULT_MOJANG_API_HOST,
     "session_host": DEFAULT_MOJANG_SESSION_HOST,
     "status_host": DEFAULT_MOJANG_STATUS_HOST,
+    "cache_file": DEFAULT_CACHE_FILE,
+    "cache_type": DEFAULT_CACHE_TYPE,
+    "cache_expiry": DEFAULT_CACHE_EXPIRY,
 }
 
 
@@ -886,21 +896,24 @@ def _fetch_profile(options):
     It presumes that the options will have profile_uuid and by_name
     """
 
+    search_val = options.profile_uuid
+    if not search_val:
+        if options.by_name:
+            search_val = options.auth.selectedProfile["name"]
+        else:
+            search_val = options.auth.selectedProfile["id"]
+        options.profile_uuid = search_val
+
     if options.by_name:
         api = mojang_api(options)
-        found = api.username_to_uuid(options.profile_uuid, None)
+        found = api.username_to_uuid(search_val, None)
         uuid = found.get("id", None)
 
     else:
-        uuid = options.profile_uuid
-
-    # TODO: we need to cache this and only call to the API if the
-    # cached copy is more than 60 seconds old.
+        uuid = search_val
 
     api = session_api(options)
-    info = api.profile_info(uuid)
-
-    return info
+    return api.profile_info(uuid)
 
 
 def cli_command_profile_info(options):
@@ -1084,16 +1097,9 @@ def cli_command_skin_download(options):
     cli: gnajom skin download
     """
 
-    uuid = options.profile_uuid
-    if not uuid:
-        if options.by_name:
-            uuid = options.auth.selectedProfile["name"]
-        else:
-            uuid = options.auth.selectedProfile["id"]
-
     info = _fetch_profile(options)
     if not info:
-        print("Profile not found: %s" % uuid)
+        print("Profile not found: %s" % options.profile_uuid, file=sys.stderr)
         return 1
 
     texture = None
@@ -1102,10 +1108,15 @@ def cli_command_skin_download(options):
             texture = prop["value"]
             break
     else:
-        print("Profile has no texture data")
-        return 0
+        print("Profile has no texture data", file=sys.stderr)
+        return 1
 
-    skin_url = texture["textures"]["SKIN"]["url"]
+    skin_data = texture["textures"].get("SKIN")
+    skin_url = skin_data.get("url") if skin_data else None
+
+    if not skin_url:
+        print("Profile has no skin data", file=sys.stderr)
+        return 1
 
     if options.just_url:
         print(skin_url)
@@ -1321,6 +1332,11 @@ def main(argv=None):
         options = parser.parse_args(argv[1:])
         options.auth = load_auth(options)
 
+        # globally enable the cache as configured
+        options.caching = enable_api_cache(options.cache_file,
+                                           options.cache_type,
+                                           options.cache_expiry)
+
         # cli_func is defined as a default value for each individual
         # subcommand parser, see subparser()
         return options.cli_func(options) or 0
@@ -1344,6 +1360,9 @@ def main(argv=None):
     except KeyboardInterrupt:
         print(file=sys.stderr)
         return 130
+
+    finally:
+        disable_api_cache()
 
 
 if __name__ == "__main__":
