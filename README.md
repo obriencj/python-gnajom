@@ -60,9 +60,11 @@ tricky to distinguish which one you should use.
 ## Requirements
 
 - [Python] 3.2+
-- [requests](http://docs.python-requests.org/en/latest/) for HTTP calls
-- [argparse](https://pypi.python.org/pypi/argparse) for composing the
-  nested commands and options (included in Python 3.2+)
+- [requests](https://pypi.python.org/pypi/requests) for making the
+  HTTP API calls
+- [requests_cache](https://pypi.python.org/pypi/requests-cache)
+  (optional feature) to enable caching HTTP API call results and
+  avoiding rate-limit errors
 
 
 ## Author
