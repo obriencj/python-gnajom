@@ -44,6 +44,7 @@ number of available calls in the various Mojang public APIs.
 * `gnajom server ping SERVER_IP`
 * `gnajom skin change URL`
 * `gnajom skin upload FILE_NAME`
+* `gnajom skin download`
 * `gnajom skin reset`
 
 Some distinctions are necessary for some of this to make sense:
