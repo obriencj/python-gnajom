@@ -25,6 +25,8 @@ server protocol
 import socket
 import zlib
 
+from abc import ABCMeta, abstractmethod
+from collections import deque
 from io import StringIO
 from functools import update_wrapper
 from singledispatch import singledispatch
@@ -379,15 +381,29 @@ class SetCompression(ClientboundPacket):
 
 class ClientSession(object):
 
+
     def __init__(self):
+        self.dispatcher = None
         self.state = STATE_CLOSED
         self.compression = False
         self.socket = None
         self.socketin = None
         self.socketout = None
+        self.queue = deque()
 
 
-    def open(self, host, port):
+    def begin(self, dispatcher):
+        self.dispatcher = dispatcher
+        dispatcher.begin()
+
+
+    def end(self):
+        dispatcher = self.dispatcher
+        self.dispatcher = None
+        dispatcher.end()
+
+
+    def connect(self, host, port):
         if self.state != STATE_CLOSED:
             raise ClientStateException(STATE_CLOSED, self.state)
 
@@ -398,6 +414,18 @@ class ClientSession(object):
         self.socket_out = sock.makefile("w+b")
 
         self.state = STATE_CONNECTED
+
+
+    def disconnect(self):
+        if self.socket:
+            self.socket.disconnect()
+
+        self.state = STATE_CLOSED
+        self.compression = False
+        self.socket = None
+        self.socket_in = None
+        self.socket_out = None
+        self.queue.clear()
 
 
     def send(self, packet, verify_state=True):
@@ -417,10 +445,76 @@ class ClientSession(object):
 
 
     def receive_and_handle(self, verify=True):
-        return self.handle(self.receive(verify))
+        # handle any packets we received without a dispatcher, first
+        for cached in self.queue:
+            self.handle(cached)
+
+        # now we can actually receive and handle a new packet
+        self.handle(self.receive(verify))
 
 
-    def handshake(self):
+    def handle(self, packet):
+        if self.dispatcher:
+            self.dispatcher.handle(packet)
+        else:
+            self.queue.append(packet)
+
+
+class Dispatcher(object):
+    """
+    A Dispatcher is a collection of behavior for a ClientSession, sending
+    and receiving messages to get to a goal.
+    """
+
+    __metaclass__ = ABCMeta
+
+
+    def __init__(self, session):
+        self.session = session
+        self.alive = False
+
+
+    def begin(self):
+        self.kickoff()
+
+        self.alive = True
+        while self.alive:
+            self.session.receive_and_handle()
+
+        self.session.end()
+
+
+    def end(self):
+        self.cleanup()
+
+
+    def kickoff(self):
+        pass
+
+
+    def stop(self):
+        self.alive = False
+
+
+    @abstractmethod
+    def handle(self, packet):
+        pass
+
+
+class LoginDispatcher(Dispatcher):
+
+
+    def __init__(self, session, goal_state=STATE_STATUS):
+        self.session = session
+        self.goal = goal_state
+
+
+    def kickoff(self):
+        # TODO: send the login message to begin the interaction. After
+        # that we should be in the loop from begin, and the handle
+        # method will be called to deal with the incoming packets.
+        # Those will serve to perform the behavior negotiating the
+        # login process, until we finally get to the right state.
         pass
 
 
@@ -446,12 +540,25 @@ class ClientSession(object):
 
     @handle.register(LoginSuccess)
     def _handle_loginsuccess(self, packet):
-        pass
+        # TODO verify the state is the one we wanted
+        # set the session state
+        # and we're done!
+        self.end()
 
 
     @handle.register(SetCompression)
     def _handle_setcompress(self, packet):
         pass
+
+
+def connect_for_status(host, port, auth):
+    session = ClientSession()
+    session.connect(host, port)
+
+    login = LoginDispatcher(session, auth)
+    session.begin(login)
+
+    return session
 
 
 #
