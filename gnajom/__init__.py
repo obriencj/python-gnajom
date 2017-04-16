@@ -175,7 +175,6 @@ class GnajomAPI(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, auth, host, apicache=None, debug_hook=None):
-        assert(auth is not None)
         assert(host is not None)
 
         self.auth = auth
