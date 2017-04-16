@@ -850,7 +850,8 @@ def cli_subparser_user_profile(parent):
 
 
 def cli_subparser_user(parent):
-    p = subparser(parent, "user")
+    p = subparser(parent, "user",
+                  help="Commands related to user accounts")
 
     cli_subparser_user_whoami(p)
     cli_subparser_user_history(p)
@@ -958,7 +959,8 @@ def cli_subparser_profile_info(parent):
 
 
 def cli_subparser_profile(parent):
-    p = subparser(parent, "profile")
+    p = subparser(parent, "profile",
+                  help="Commands related to player profiles")
 
     cli_subparser_profile_lookup(p)
     cli_subparser_profile_info(p)
@@ -1005,7 +1007,9 @@ def cli_command_status(options):
 
 
 def cli_subparser_status(parent):
-    p = subparser(parent, "status", cli_command_status)
+    p = subparser(parent, "status", cli_command_status,
+                  help="Show the status of public Mojang services")
+
     optional_status_host(p)
     optional_json(p)
 
@@ -1032,7 +1036,9 @@ def cli_command_statistics(options):
 
 
 def cli_subparser_statistics(parent):
-    p = subparser(parent, "statistics", cli_command_statistics)
+    p = subparser(parent, "statistics", cli_command_statistics,
+                  help="Show Mojang's Minecraft sales statistics")
+
     optional_api_host(p)
     optional_json(p)
 
@@ -1050,6 +1056,7 @@ def cli_command_skin_change(options):
 
 def cli_subparser_skin_change(parent):
     p = subparser(parent, "change", cli_command_skin_change)
+
     optional_api_host(p)
 
     return p
@@ -1172,7 +1179,8 @@ def cli_subparser_skin_download(parent):
 
 
 def cli_subparser_skin(parent):
-    p = subparser(parent, "skin")
+    p = subparser(parent, "skin",
+                  help="Commands related to Minecraft skin services")
 
     cli_subparser_skin_change(p)
     cli_subparser_skin_upload(p)
