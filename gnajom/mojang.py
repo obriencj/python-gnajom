@@ -98,7 +98,7 @@ class MojangAPI(GnajomAPI):
         payload = {"model": "slim" if slim else "",
                    "file": ("harambe.png", skin_stream, "image/png")}
 
-        return self.api.post_form("/user/profile/%s/skin" % uuid, payload)
+        return self.api.put_form("/user/profile/%s/skin" % uuid, payload)
 
 
     def upload_skin_filename(self, uuid, skin_filename, slim=False):
@@ -107,6 +107,8 @@ class MojangAPI(GnajomAPI):
 
 
     def reset_skin(self, uuid):
+        print(self.api.headers)
+        print(uuid)
         return self.api.delete("/user/profile/%s/skin" % uuid)
 
 

@@ -898,15 +898,14 @@ def cli_subparser_profile_lookup(parent):
     return p
 
 
-def _fetch_profile(options):
+def _pick_uuid(options):
     """
-    This is used by a few commands to fetch profile data either by
-    UUID or by username.
-
-    It presumes that the options will have profile_uuid and by_name
+    Returns a UUID string based on the presence of a profile_uuid
+    option, and the --by-name flag. If profile_uuid is not specified,
+    then it defaults to the auth data.
     """
 
-    search_val = options.profile_uuid
+    search_val = getattr(options, "profile_uuid", None)
     if not search_val:
         if options.by_name:
             search_val = options.auth.selectedProfile["name"]
@@ -922,8 +921,19 @@ def _fetch_profile(options):
     else:
         uuid = search_val
 
+    return uuid
+
+
+def _fetch_profile(options):
+    """
+    This is used by a few commands to fetch profile data either by
+    UUID or by username.
+
+    It presumes that the options will have profile_uuid and by_name
+    """
+
     api = session_api(options)
-    return api.profile_info(uuid)
+    return api.profile_info(_pick_uuid(options))
 
 
 def cli_command_profile_info(options):
@@ -1047,7 +1057,7 @@ def cli_subparser_statistics(parent):
 
 def cli_command_skin_change(options):
     """
-    cli: gnajom skin reset
+    cli: gnajom skin change
     """
 
     print("NYI")
@@ -1055,7 +1065,8 @@ def cli_command_skin_change(options):
 
 
 def cli_subparser_skin_change(parent):
-    p = subparser(parent, "change", cli_command_skin_change)
+    p = subparser(parent, "change", cli_command_skin_change,
+                  help="Set profile skin to an existing skin URL")
 
     optional_api_host(p)
 
@@ -1064,15 +1075,13 @@ def cli_subparser_skin_change(parent):
 
 def cli_command_skin_upload(options):
     """
-    cli: gnajom skin reset
+    cli: gnajom skin upload
     """
 
+    uuid = _pick_uuid(options)
+
     api = mojang_api(options)
-
-    uuid = None
-    res = api.upload_skin(uuid, options.skin_file, options.slim)
-
-    print(res)
+    api.upload_skin(uuid, options.skin_file, options.slim_model)
 
     return 0
 
@@ -1086,6 +1095,12 @@ def cli_subparser_skin_upload(parent):
     p.add_argument("skin_file", action="store", type=FileType('rb'),
                    help="Skin image file")
 
+    p.add_argument("profile_uuid", nargs="?", action="store",
+                   help="profile to reset skin (defaults to auth profile)")
+
+    p.add_argument("--by-name", action="store_true", default=False,
+                   help="profile specified by name instead of UUID")
+
     p.add_argument("--slim-model", action="store_true",
                    help="Use the slim (Alex) model with this skin")
 
@@ -1097,13 +1112,25 @@ def cli_command_skin_reset(options):
     cli: gnajom skin reset
     """
 
-    print("NYI")
+    uuid = _pick_uuid(options)
+
+    api = mojang_api(options)
+    api.reset_skin(uuid)
+
     return 0
 
 
 def cli_subparser_skin_reset(parent):
-    p = subparser(parent, "reset", cli_command_skin_reset)
+    p = subparser(parent, "reset", cli_command_skin_reset,
+                  help="Reset a profile's skin to the default")
+
     optional_api_host(p)
+
+    p.add_argument("profile_uuid", nargs="?", action="store",
+                   help="profile to set skin (defaults to auth profile)")
+
+    p.add_argument("--by-name", action="store_true", default=False,
+                   help="profile specified by name instead of UUID")
 
     return p
 

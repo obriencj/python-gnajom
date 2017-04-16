@@ -27,7 +27,7 @@ sevirces such as auth, realms, and users.
 from abc import ABCMeta
 from functools import partial, update_wrapper
 from json import dumps
-from requests import get, post, delete
+from requests import get, post, put, delete
 from requests.cookies import RequestsCookieJar
 from urllib.parse import urlencode
 
@@ -120,27 +120,6 @@ class APIHost(object):
         return resp.json() if len(resp.content) else None
 
 
-    def post_form(self, endpoint, payload):
-        """
-        Trigger an API endpoint on the host via an HTTP POST, sending
-        payload represented as multipart form data. Any JSON results
-        will be parsed and returned.
-        """
-
-        assert(endpoint)
-
-        # requests is smart enough to update the Content-Type header
-        # when the files= argument is specified
-        resp = post(self._host + endpoint, files=payload,
-                    cookies=self.cookies, headers=self.headers)
-
-        if self.debug_hook:
-            self.debug_hook(resp)
-        resp.raise_for_status()
-
-        return resp.json() if len(resp.content) else None
-
-
     def post_encoded(self, endpoint, payload):
         """
         Trigger an API endpoint on the host via an HTTP POST, sending
@@ -157,6 +136,27 @@ class APIHost(object):
 
         resp = post(self._host + endpoint, data,
                     cookies=self.cookies, headers=self.headers)
+
+        if self.debug_hook:
+            self.debug_hook(resp)
+        resp.raise_for_status()
+
+        return resp.json() if len(resp.content) else None
+
+
+    def put_form(self, endpoint, payload):
+        """
+        Trigger an API endpoint on the host via an HTTP PUT, sending
+        payload represented as multipart form data. Any JSON results
+        will be parsed and returned.
+        """
+
+        assert(endpoint)
+
+        # requests is smart enough to update the Content-Type header
+        # when the files= argument is specified
+        resp = put(self._host + endpoint, files=payload,
+                   cookies=self.cookies, headers=self.headers)
 
         if self.debug_hook:
             self.debug_hook(resp)
