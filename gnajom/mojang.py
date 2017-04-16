@@ -58,9 +58,9 @@ class MojangAPI(GnajomAPI):
     """
 
     def __init__(self, auth, host=DEFAULT_MOJANG_API_HOST,
-                 apicache=None):
+                 apicache=None, debug_hook=None):
 
-        super().__init__(auth, host, apicache)
+        super().__init__(auth, host, apicache, debug_hook)
 
         if self.auth.accessToken:
             bearer = "Bearer " + self.auth.accessToken
@@ -130,9 +130,9 @@ class SessionAPI(GnajomAPI):
     """
 
     def __init__(self, auth, host=DEFAULT_MOJANG_SESSION_HOST,
-                 apicache=None):
+                 apicache=None, debug_hook=None):
 
-        super().__init__(auth, host, apicache)
+        super().__init__(auth, host, apicache, debug_hook)
 
         if self.auth.accessToken:
             bearer = "Bearer " + self.auth.accessToken
@@ -174,9 +174,9 @@ class StatusAPI(GnajomAPI):
     """
 
     def __init__(self, auth, host=DEFAULT_MOJANG_STATUS_HOST,
-                 apicache=None):
+                 apicache=None, debug_hook=None):
 
-        super().__init__(auth, host, apicache)
+        super().__init__(auth, host, apicache, debug_hook)
 
 
     def check(self):

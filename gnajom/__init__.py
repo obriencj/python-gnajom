@@ -47,7 +47,7 @@ class APIHost(object):
     Lightweight wrapper for RESTful JSON calls
     """
 
-    def __init__(self, hosturi, apicache=None):
+    def __init__(self, hosturi, apicache=None, debug_hook=None):
 
         # if an empty hosturi has gotten this far in the API,
         # something is screwed up.
@@ -57,6 +57,7 @@ class APIHost(object):
         self.apicache = apicache
         self.cookies = RequestsCookieJar()
         self.headers = {}
+        self.debug_hook = debug_hook
 
 
     def get(self, endpoint):
@@ -70,6 +71,8 @@ class APIHost(object):
         resp = get(self._host + endpoint,
                    cookies=self.cookies, headers=self.headers)
 
+        if self.debug_hook:
+            self.debug_hook(resp)
         resp.raise_for_status()
 
         return resp.json() if len(resp.content) else None
@@ -86,6 +89,8 @@ class APIHost(object):
         resp = delete(self._host + endpoint,
                       cookies=self.cookies, headers=self.headers)
 
+        if self.debug_hook:
+            self.debug_hook(resp)
         resp.raise_for_status()
 
         return resp.json() if len(resp.content) else None
@@ -108,6 +113,8 @@ class APIHost(object):
         resp = post(self._host + endpoint, data,
                     cookies=self.cookies, headers=headers)
 
+        if self.debug_hook:
+            self.debug_hook(resp)
         resp.raise_for_status()
 
         return resp.json() if len(resp.content) else None
@@ -127,6 +134,8 @@ class APIHost(object):
         resp = post(self._host + endpoint, files=payload,
                     cookies=self.cookies, headers=self.headers)
 
+        if self.debug_hook:
+            self.debug_hook(resp)
         resp.raise_for_status()
 
         return resp.json() if len(resp.content) else None
@@ -149,6 +158,8 @@ class APIHost(object):
         resp = post(self._host + endpoint, data,
                     cookies=self.cookies, headers=self.headers)
 
+        if self.debug_hook:
+            self.debug_hook(resp)
         resp.raise_for_status()
 
         return resp.json() if len(resp.content) else None
@@ -163,12 +174,12 @@ class GnajomAPI(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, auth, host, apicache=None):
+    def __init__(self, auth, host, apicache=None, debug_hook=None):
         assert(auth is not None)
         assert(host is not None)
 
         self.auth = auth
-        self.api = APIHost(host, apicache)
+        self.api = APIHost(host, apicache, debug_hook)
 
 
 def usecache(func):
@@ -266,8 +277,7 @@ class APICache(object):
     """
 
     def __init__(self, fileprefix, cachetype, expiry):
-        self.enable = partial(enable_cache, fileprefix, cachetype,
-                              expiry)
+        self.enable = partial(enable_cache, fileprefix, cachetype, expiry)
         self.disable = disable_cache
         self.working = False
 

@@ -47,9 +47,10 @@ class RealmsAPI(GnajomAPI):
     """
 
     def __init__(self, auth, host=DEFAULT_REALMS_HOST,
-                 version=DEFAULT_REALMS_VERSION, apicache=None):
+                 version=DEFAULT_REALMS_VERSION,
+                 apicache=None, debug_hook=None):
 
-        super().__init__(auth, host, apicache)
+        super().__init__(auth, host, apicache, debug_hook)
 
         # compose the necessary cookies from data in the auth object
         sid = "token:%s:%s" % (auth.accessToken, auth.selectedProfile["id"])

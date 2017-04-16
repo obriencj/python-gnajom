@@ -40,7 +40,6 @@ from json import dump, loads
 from os import chmod, makedirs
 from os.path import basename, exists, expanduser, split
 from requests.exceptions import HTTPError
-from requests.hooks import default_hooks
 from time import sleep
 from configparser import SafeConfigParser
 
@@ -410,10 +409,12 @@ def realms_api(options):
     to log in before proceeding.
     """
 
+    hook = _cli_api_debug_hook if options.debug_cache else None
+
     auth = options.auth
     if auth.validate():
         return RealmsAPI(auth, options.realms_host, options.realms_version,
-                         apicache=api_cache(options))
+                         apicache=api_cache(options), debug_hook=hook)
     else:
         raise SessionInvalid()
 
@@ -724,10 +725,12 @@ def mojang_api(options):
     to log in before proceeding.
     """
 
+    hook = _cli_api_debug_hook if options.debug_cache else None
+
     auth = options.auth
     if auth.validate():
         return MojangAPI(auth, options.api_host,
-                         apicache=api_cache(options))
+                         apicache=api_cache(options), debug_hook=hook)
     else:
         raise SessionInvalid()
 
@@ -740,10 +743,12 @@ def session_api(options):
     to log in before proceeding.
     """
 
+    hook = _cli_api_debug_hook if options.debug_cache else None
+
     auth = options.auth
     if auth.validate():
         return SessionAPI(auth, options.session_host,
-                          apicache=api_cache(options))
+                          apicache=api_cache(options), debug_hook=hook)
     else:
         raise SessionInvalid()
 
@@ -1194,7 +1199,7 @@ def cli_subparser_skin(parent):
 # --- CLI setup and entry point ---
 
 
-def _cli_cache_debug_hook(response):
+def _cli_api_debug_hook(response):
     from_cache = getattr(response, "from_cache", None)
     msg = "cached: %r, response: %r" % (from_cache, response)
     print(msg, file=sys.stderr)
@@ -1204,14 +1209,9 @@ def _cli_cache_debug_hook(response):
 def api_cache(options):
     cache = getattr(options, "cache", None)
     if cache is None:
-
         cache = APICache(options.cache_file, options.cache_type,
                          options.cache_expiry)
         options.cache = cache
-
-        if options.debug_cache:
-            hooks = default_hooks()
-            hooks["response"].append(_cli_cache_debug_hook)
 
     return cache
 
