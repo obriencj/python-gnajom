@@ -24,8 +24,9 @@ from uuid import uuid1
 from . import APIHost
 
 
-__all__ = ("Authentication", "auth_from_file", "generate_clientToken",
-           "HOST_YGGDRASIL", "DEFAULT_AUTH_HOST", "MINECRAFT_AGENT_V1", )
+__all__ = (
+    "Authentication", "auth_from_file", "generate_clientToken",
+    "HOST_YGGDRASIL", "DEFAULT_AUTH_HOST", "MINECRAFT_AGENT_V1", )
 
 
 HOST_YGGDRASIL = "https://authserver.mojang.com"

@@ -24,6 +24,8 @@ sevirces such as auth, realms, and users.
 """
 
 
+from abc import ABCMeta
+from functools import partial, update_wrapper
 from json import dumps
 from requests import get, post, delete
 from requests.cookies import RequestsCookieJar
@@ -35,7 +37,9 @@ from urllib.parse import urlencode
 # form encoding, url form encoding, all easily accessible.
 
 
-__all__ = ("APIHost", )
+__all__ = (
+    "APIHost", "APICache", "usecache",
+    "enable_cache", "disable_cache", "cache_is_enabled", )
 
 
 class APIHost(object):
@@ -43,13 +47,14 @@ class APIHost(object):
     Lightweight wrapper for RESTful JSON calls
     """
 
-    def __init__(self, hosturi):
+    def __init__(self, hosturi, apicache=None):
 
         # if an empty hosturi has gotten this far in the API,
         # something is screwed up.
         assert(hosturi)
 
         self._host = hosturi
+        self.apicache = apicache
         self.cookies = RequestsCookieJar()
         self.headers = {}
 
@@ -67,10 +72,7 @@ class APIHost(object):
 
         resp.raise_for_status()
 
-        if len(resp.content):
-            return resp.json()
-        else:
-            return None
+        return resp.json() if len(resp.content) else None
 
 
     def delete(self, endpoint):
@@ -86,10 +88,7 @@ class APIHost(object):
 
         resp.raise_for_status()
 
-        if len(resp.content):
-            return resp.json()
-        else:
-            return None
+        return resp.json() if len(resp.content) else None
 
 
     def post(self, endpoint, payload):
@@ -111,10 +110,7 @@ class APIHost(object):
 
         resp.raise_for_status()
 
-        if len(resp.content):
-            return resp.json()
-        else:
-            return None
+        return resp.json() if len(resp.content) else None
 
 
     def post_form(self, endpoint, payload):
@@ -133,10 +129,7 @@ class APIHost(object):
 
         resp.raise_for_status()
 
-        if len(resp.content):
-            return resp.json()
-        else:
-            return None
+        return resp.json() if len(resp.content) else None
 
 
     def post_encoded(self, endpoint, payload):
@@ -158,30 +151,139 @@ class APIHost(object):
 
         resp.raise_for_status()
 
-        if len(resp.content):
-            return resp.json()
+        return resp.json() if len(resp.content) else None
+
+
+class GnajomAPI(object):
+    """
+    Parent class for various API instances. Subclasses may decorate
+    their methods with @usecache to optionally enable local caching of
+    requests.
+    """
+
+    __metaclass__ = ABCMeta
+
+    def __init__(self, auth, host, apicache=None):
+        assert(auth is not None)
+        assert(host is not None)
+
+        self.auth = auth
+        self.api = APIHost(host, apicache)
+
+
+def usecache(func):
+    """
+    Decorator for methods on a GnajomAPI instance
+    """
+
+    def wrapper(self, *args, **kwds):
+        nocache = kwds.get("nocache", False)
+
+        if self.api.apicache and not nocache:
+            with self.api.apicache:
+                result = func(self, *args, **kwds)
         else:
-            return None
+            result = func(self, *args, **kwds)
+        return result
+
+    update_wrapper(wrapper, func)
+    return wrapper
 
 
-def enable_api_cache(fileprefix, cachetype, expiry):
+_CACHE_INSTALLED = False
+
+
+def cache_is_enabled():
+    """
+    Returns True if the global cache has been enabled via the
+    `enable_cache` function.
+    """
+
+    return _CACHE_INSTALLED
+
+
+def enable_cache(fileprefix, cachetype, expiry):
+    """
+    If the requests_cache package is available, install a cache and
+    begin using it globally. Returns True if caching was successfully
+    enabled, and False otherwise (failed to enable, or enabled
+    already)
+    """
+
+    global _CACHE_INSTALLED
+
+    if _CACHE_INSTALLED:
+        return False
+
     try:
         from requests_cache import install_cache
-        install_cache(fileprefix, cachetype, expiry)
-    except ImportError as ie:
+        from requests_cache.core import remove_expired_responses
+
+        install_cache(fileprefix, cachetype, expire_after=expiry)
+        remove_expired_responses()
+
+    except ImportError:
         return False
+
     else:
+        _CACHE_INSTALLED = True
         return True
 
 
-def disable_api_cache():
+def disable_cache():
+    """
+    If the requests_cache package is available, uninstall the existing
+    installed cache. Returns True if disable happened.
+    """
+
+    global _CACHE_INSTALLED
+
+    if not _CACHE_INSTALLED:
+        return False
+
     try:
         from requests_cache import uninstall_cache
         uninstall_cache()
-    except ImportError as ie:
+
+    except ImportError:
         return False
+
     else:
+        _CACHE_INSTALLED = False
         return True
+
+
+class APICache(object):
+    """
+    A Context Manager that will enable caching on enter, and disable
+    it when the context exits. Trimming/cleanup of expired entries
+    occurs on enter.
+
+    Can be reused repeatedly.
+
+    This can be used even if requests_cache is not installed, it
+    simply won't have any caching effect.
+    """
+
+    def __init__(self, fileprefix, cachetype, expiry):
+        self.enable = partial(enable_cache, fileprefix, cachetype,
+                              expiry)
+        self.disable = disable_cache
+        self.working = False
+
+
+    def __enter__(self):
+        # enable the cache, and remember if we were able to
+        self.working = self.enable()
+        return self
+
+
+    def __exit__(self, _exc_type, _exc_val, _exc_trace):
+        # we only want to disable the cache if we were the ones that
+        # enabled it in the first place.
+        if self.working:
+            self.disable()
+            self.working = False
 
 
 #

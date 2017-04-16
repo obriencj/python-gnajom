@@ -40,10 +40,11 @@ from json import dump, loads
 from os import chmod, makedirs
 from os.path import basename, exists, expanduser, split
 from requests.exceptions import HTTPError
+from requests.hooks import default_hooks
 from time import sleep
 from configparser import SafeConfigParser
 
-from . import enable_api_cache, disable_api_cache
+from . import APICache
 
 from .auth import Authentication, DEFAULT_AUTH_HOST
 
@@ -411,7 +412,8 @@ def realms_api(options):
 
     auth = options.auth
     if auth.validate():
-        return RealmsAPI(auth, options.realms_host, options.realms_version)
+        return RealmsAPI(auth, options.realms_host, options.realms_version,
+                         apicache=api_cache(options))
     else:
         raise SessionInvalid()
 
@@ -724,7 +726,8 @@ def mojang_api(options):
 
     auth = options.auth
     if auth.validate():
-        return MojangAPI(auth, options.api_host)
+        return MojangAPI(auth, options.api_host,
+                         apicache=api_cache(options))
     else:
         raise SessionInvalid()
 
@@ -739,7 +742,8 @@ def session_api(options):
 
     auth = options.auth
     if auth.validate():
-        return SessionAPI(auth, options.session_host)
+        return SessionAPI(auth, options.session_host,
+                          apicache=api_cache(options))
     else:
         raise SessionInvalid()
 
@@ -1190,6 +1194,28 @@ def cli_subparser_skin(parent):
 # --- CLI setup and entry point ---
 
 
+def _cli_cache_debug_hook(response):
+    from_cache = getattr(response, "from_cache", None)
+    msg = "cached: %r, response: %r" % (from_cache, response)
+    print(msg, file=sys.stderr)
+    return response
+
+
+def api_cache(options):
+    cache = getattr(options, "cache", None)
+    if cache is None:
+
+        cache = APICache(options.cache_file, options.cache_type,
+                         options.cache_expiry)
+        options.cache = cache
+
+        if options.debug_cache:
+            hooks = default_hooks()
+            hooks["response"].append(_cli_cache_debug_hook)
+
+    return cache
+
+
 def optional_realms_host(parser):
     parser.add_argument("--realms-host", action="store",
                         help="Mojang Realms API host")
@@ -1303,6 +1329,9 @@ def cli_argparser(argv=None):
     parser.add_argument("-s", "--session-file", action="store",
                         help="Session auth file")
 
+    parser.add_argument("--debug-cache", action="store_true", default=False,
+                        help="Print debugging information about cached calls")
+
     cli_subparser_auth(parser)
     cli_subparser_realms(parser)
     cli_subparser_status(parser)
@@ -1332,11 +1361,6 @@ def main(argv=None):
         options = parser.parse_args(argv[1:])
         options.auth = load_auth(options)
 
-        # globally enable the cache as configured
-        options.caching = enable_api_cache(options.cache_file,
-                                           options.cache_type,
-                                           options.cache_expiry)
-
         # cli_func is defined as a default value for each individual
         # subcommand parser, see subparser()
         return options.cli_func(options) or 0
@@ -1360,9 +1384,6 @@ def main(argv=None):
     except KeyboardInterrupt:
         print(file=sys.stderr)
         return 130
-
-    finally:
-        disable_api_cache()
 
 
 if __name__ == "__main__":

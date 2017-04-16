@@ -20,7 +20,7 @@ and service status
 from base64 import b64decode
 from json import loads
 
-from gnajom import APIHost
+from . import GnajomAPI, usecache
 
 
 __all__ = (
@@ -48,7 +48,7 @@ DEFAULT_STATISTICS = (
     STATISTIC_SCROLLS_SOLD, )
 
 
-class MojangAPI(object):
+class MojangAPI(GnajomAPI):
     """
     A thin wrapper for the the core portion of the Mojang API
 
@@ -57,15 +57,17 @@ class MojangAPI(object):
     * http://wiki.vg/Mojang_API
     """
 
-    def __init__(self, auth, host=DEFAULT_MOJANG_API_HOST):
-        self.auth = auth
-        self.api = APIHost(host)
+    def __init__(self, auth, host=DEFAULT_MOJANG_API_HOST,
+                 apicache=None):
+
+        super().__init__(auth, host, apicache)
 
         if self.auth.accessToken:
             bearer = "Bearer " + self.auth.accessToken
             self.api.headers["Authorization"] = bearer
 
 
+    @usecache
     def username_to_uuid(self, username, at_time=None):
         if at_time is not None:
             return self.api.get("/users/profiles/minecraft/%s?at=%i" %
@@ -75,10 +77,12 @@ class MojangAPI(object):
                                 username)
 
 
+    @usecache
     def uuid_name_history(self, uuid):
         return self.api.get("/user/profiles/%s/names" % uuid)
 
 
+    @usecache
     def playernames_to_uuids(self, playernames):
         return self.api.post("/profiles/minecraft", list(playernames))
 
@@ -106,6 +110,7 @@ class MojangAPI(object):
         return self.api.delete("/user/profile/%s/skin" % uuid)
 
 
+    @usecache
     def whoami(self):
         return self.api.get("/user")
 
@@ -115,7 +120,7 @@ class MojangAPI(object):
         return self.api.post("/orders/statistics", which)
 
 
-class SessionAPI(object):
+class SessionAPI(GnajomAPI):
     """
     A thin wrapper for the the session portion of the Mojang API
 
@@ -124,15 +129,17 @@ class SessionAPI(object):
     * http://wiki.vg/Mojang_API
     """
 
-    def __init__(self, auth, host=DEFAULT_MOJANG_SESSION_HOST):
-        self.auth = auth
-        self.api = APIHost(host)
+    def __init__(self, auth, host=DEFAULT_MOJANG_SESSION_HOST,
+                 apicache=None):
+
+        super().__init__(auth, host, apicache)
 
         if self.auth.accessToken:
             bearer = "Bearer " + self.auth.accessToken
             self.api.headers["Authorization"] = bearer
 
 
+    @usecache
     def profile_info(self, uuid):
         data = self.api.get("/session/minecraft/profile/%s" % uuid)
 
@@ -140,12 +147,13 @@ class SessionAPI(object):
             props = data.get("properties", ())
             for prop in props:
                 if prop["name"] == "textures":
-                    # we'll transform this particular named property
-                    # value since we know it's actually JSON
-                    val = prop.get("value")
-                    val = b64decode(val)
-                    val = val.decode()
-                    val = loads(val)
+                    # since we happen to know that the textures
+                    # property is always going to be a base64 encoded
+                    # JSON object, let's go ahead and pre-decode it if
+                    # it exists
+                    val = prop.get("value", "")
+                    val = b64decode(val).decode()
+                    val = loads(val) if val else dict()
                     prop["value"] = val
                     break
 
@@ -156,7 +164,7 @@ class SessionAPI(object):
         return self.api.get("/blockedservers")
 
 
-class StatusAPI(object):
+class StatusAPI(GnajomAPI):
     """
     A thin wrapper for the the status portion of the Mojang API
 
@@ -165,9 +173,10 @@ class StatusAPI(object):
     * http://wiki.vg/Mojang_API
     """
 
-    def __init__(self, auth, host=DEFAULT_MOJANG_STATUS_HOST):
-        self.auth = auth  # unused, maybe useful in the future.
-        self.api = APIHost(host)
+    def __init__(self, auth, host=DEFAULT_MOJANG_STATUS_HOST,
+                 apicache=None):
+
+        super().__init__(auth, host, apicache)
 
 
     def check(self):

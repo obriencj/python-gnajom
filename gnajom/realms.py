@@ -21,12 +21,13 @@ gnajom.realms - Python module for working with Realms servers.
 """
 
 
-from . import APIHost
+from . import GnajomAPI, usecache
 
 
-__all__ = ("RealmsAPI",
-           "HOST_DESKTOP_REALMS", "HOST_PE_REALMS",
-           "DEFAULT_REALMS_HOST", "DEFAULT_REALMS_VERSION", )
+__all__ = (
+    "RealmsAPI",
+    "HOST_DESKTOP_REALMS", "HOST_PE_REALMS",
+    "DEFAULT_REALMS_HOST", "DEFAULT_REALMS_VERSION", )
 
 
 HOST_DESKTOP_REALMS = "https://mcoapi.minecraft.net"
@@ -36,7 +37,7 @@ DEFAULT_REALMS_HOST = HOST_DESKTOP_REALMS
 DEFAULT_REALMS_VERSION = "1.10.2"
 
 
-class RealmsAPI(object):
+class RealmsAPI(GnajomAPI):
     """
     A thin wrapper for the Mojang Realms API
 
@@ -46,31 +47,35 @@ class RealmsAPI(object):
     """
 
     def __init__(self, auth, host=DEFAULT_REALMS_HOST,
-                 version=DEFAULT_REALMS_VERSION):
+                 version=DEFAULT_REALMS_VERSION, apicache=None):
+
+        super().__init__(auth, host, apicache)
 
         # compose the necessary cookies from data in the auth object
-        self.auth = auth
         sid = "token:%s:%s" % (auth.accessToken, auth.selectedProfile["id"])
         user = auth.selectedProfile["name"]
 
-        self.api = APIHost(host)
         self.api.cookies.set("sid", sid)
         self.api.cookies.set("user", user)
         self.api.cookies.set("version", version)
 
 
+    @usecache
     def mco_available(self):
         return self.api.get("/mco/available")
 
 
+    @usecache
     def mco_client_outdated(self):
         return self.api.get("/mco/client/outdated")
 
 
+    @usecache
     def mco_tos_agree(self):
         return self.api.post("/mco/tos/agreed")
 
 
+    @usecache
     def realm_list(self):
         """
         List the realms available for the given account auth
@@ -79,6 +84,7 @@ class RealmsAPI(object):
         return self.api.get("/worlds")
 
 
+    @usecache
     def realm_info(self, realm_id):
         """
         Information about a specific realm by ID
@@ -96,6 +102,7 @@ class RealmsAPI(object):
         return self.api.get("/worlds/%i/join" % realm_id)
 
 
+    @usecache
     def realm_backups(self, realm_id):
         """
         Show the backups available for the given realm ID
@@ -104,6 +111,7 @@ class RealmsAPI(object):
         return self.api.get("/worlds/%i/backups" % realm_id)
 
 
+    @usecache
     def realm_world_url(self, realm_id, world):
         """
         Show the download URL for the latest world backup for the given
@@ -113,10 +121,12 @@ class RealmsAPI(object):
         return self.api.get("/worlds/%i/slot/%i/download" % (realm_id, world))
 
 
+    @usecache
     def realm_ops_list(self, realm_id):
         return self.api.get("/ops/%i" % realm_id)
 
 
+    @usecache
     def realm_subscription(self, realm_id):
         return self.api.get("/subscriptions/%i" % realm_id)
 
