@@ -69,12 +69,12 @@ class MojangAPI(GnajomAPI):
 
     @usecache
     def username_to_uuid(self, username, at_time=None):
-        if at_time is not None:
-            return self.api.get("/users/profiles/minecraft/%s?at=%i" %
-                                (username, at_time))
+        if at_time is None:
+            uri = "/users/profiles/minecraft/%s" % username
         else:
-            return self.api.get("/users/profiles/minecraft/%s" %
-                                username)
+            uri = "/users/profiles/minecraft/%s?at=%i" % (username, at_time)
+
+        return self.api.get(uri)
 
 
     @usecache
@@ -88,27 +88,33 @@ class MojangAPI(GnajomAPI):
 
 
     def change_skin(self, uuid, skin_url, slim=False):
+
+        uri = "/user/profile/%s/skin" % uuid
+
         payload = {"model": "slim" if slim else "",
                    "url": skin_url}
 
-        return self.api.post_encoded("/user/profile/%s/skin" % uuid, payload)
+        return self.api.post_encoded(uri, payload)
 
 
-    def upload_skin(self, uuid, skin_stream, slim=False):
+    def upload_skin(self, uuid, skin_stream, slim=False,
+                    filename="skin.png", content_type="image/png"):
+
+        uri = "/user/profile/%s/skin" % uuid
+
         payload = {"model": "slim" if slim else "",
-                   "file": ("harambe.png", skin_stream, "image/png")}
+                   "file": (filename, skin_stream, content_type)}
 
-        return self.api.put_form("/user/profile/%s/skin" % uuid, payload)
+        return self.api.put_form(uri, payload)
 
 
     def upload_skin_filename(self, uuid, skin_filename, slim=False):
-        with open(skin_filename) as skin_stream:
-            return self.upload_skin(self, uuid, skin_stream, slim)
+        with open(skin_filename, "rb") as skin_stream:
+            return self.upload_skin(self, uuid, skin_stream, slim,
+                                    filename=skin_filename)
 
 
     def reset_skin(self, uuid):
-        print(self.api.headers)
-        print(uuid)
         return self.api.delete("/user/profile/%s/skin" % uuid)
 
 
