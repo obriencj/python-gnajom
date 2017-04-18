@@ -23,31 +23,32 @@ The `gnajom` command-line interface (or `gnajom.cli.main()`) uses the
 argparse package to provide a nested set of commands exposing a
 number of available calls in the various Mojang public APIs.
 
-* `gnajom auth connect`
-* `gnajom auth validate`
-* `gnajom auth refresh`
-* `gnajom auth invalidate`
-* `gnajom auth show`
-* `gnajom realm list`
-* `gnajom realm backups REALM_ID`
-* `gnajom realm download REALM_ID WORLD_SLOT`
-* `gnajom realm info REALM_ID`
-* `gnajom realm knock REALM_ID`
-* `gnajom realm ping REALM_ID`
-* `gnajom status`
-* `gnajom statistics`
-* `gnajom whoami`
-* `gnajom player history PLAYER_NAME`
-* `gnajom player info PLAYER_NAME`
-* `gnajom profile lookup PLAYER_NAME ...`
-* `gnajom profile info PROFILE_ID`
-* `gnajom server ping SERVER_IP`
-* `gnajom skin change URL`
-* `gnajom skin upload FILE_NAME`
-* `gnajom skin download`
-* `gnajom skin reset`
+| Command  | Description  |
+|----------|--------------|
+|`gnajom auth connect` |Connect and create a new auth session |
+|`gnajom auth validate` |Check that the current auth session is valid |
+|`gnajom auth refresh` |Refreshes current auth session |
+|`gnajom auth invalidate` |Invalidates the current auth session |
+|`gnajom auth signout`  |Sign out all sessions for this account |
+|`gnajom auth show` |Print authentication information |
+|`gnajom realm list` |Print realms available to current user |
+|`gnajom realm info REALM_ID` |Print detailed information about a realm |
+|`gnajom realm knock REALM_ID` |Ensure a realm is running, print its address |
+|`gnajom realm backups REALM_ID` |List available backups for a realm |
+|`gnajom realm download REALM_ID WORLD_SLOT` |Download world data from a realm |
+|`gnajom status` |Show the status of public Mojang services |
+|`gnajom statistics` |Show Mojang's sales statistics |
+|`gnajom user whoami` |Print information for the current user account |
+|`gnajom user history PLAYER_NAME` |NYI |
+|`gnajom user profile PLAYER_NAME` |Find a user's profile |
+|`gnajom profile lookup PLAYER_NAME ...` |Search for profile information |
+|`gnajom profile info PROFILE_ID` |Show information about a profile |
+|`gnajom skin change URL` |Set profile skin to an existing skin URL |
+|`gnajom skin upload FILE_NAME` |Upload a file and set it as the profile skin |
+|`gnajom skin reset` |Reset a profile's skin to the default |
+|`gnajom skin download` |Download the skin for a profile |
 
-Some distinctions are necessary for some of this to make sense:
+Some parameter distinctions are necessary:
 
 * a USER is a mojang account, typically named by email address
 * a PLAYER is a minecraft account attached to the USER
