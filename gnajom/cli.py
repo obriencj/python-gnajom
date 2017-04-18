@@ -49,9 +49,12 @@ from .auth import Authentication, DEFAULT_AUTH_HOST
 
 from .realms import RealmsAPI, DEFAULT_REALMS_HOST, DEFAULT_REALMS_VERSION
 
-from .mojang import (MojangAPI, SessionAPI, StatusAPI,
-                     DEFAULT_MOJANG_API_HOST, DEFAULT_MOJANG_SESSION_HOST,
-                     DEFAULT_MOJANG_STATUS_HOST)
+from .mojang import (
+    MojangAPI, SessionAPI, StatusAPI,
+    DEFAULT_MOJANG_API_HOST, DEFAULT_MOJANG_SESSION_HOST,
+    DEFAULT_MOJANG_STATUS_HOST,
+    STATISTIC_MINECRAFT_SOLD, STATISTIC_PREPAID_MINECRAFT_REDEEMED,
+    STATISTIC_COBALT_SOLD, STATISTIC_SCROLLS_SOLD, )
 
 from .slp import legacy_slp
 
@@ -307,12 +310,12 @@ def cli_subparser_auth_signout(parent):
 _SENSITIVE_MARKERS = ("access", "token", "key", "pass")
 
 
-def _hide_sensitive(prop, markers=_SENSITIVE_MARKERS):
-    name = prop["name"].lower()
+def _hide_sensitive(prop, markers=_SENSITIVE_MARKERS, replace="HIDDEN"):
+    name = prop["name"]
     check = name.lower()
     for mark in markers:
         if mark in check:
-            return {"name": name, "value": "HIDDEN"}
+            return {"name": name, "value": replace}
     else:
         return prop
 
@@ -525,10 +528,9 @@ def cli_subparser_realm_info(parent):
 
 
 def _do_realm_knock(api, realm_id, no_wait=False):
-    retry = True
-    while(retry):
+    while(True):
         try:
-            data = api.realm_join(realm_id)
+            return api.realm_join(realm_id)
 
         except HTTPError as hte:
             if hte.response.status_code == 503:
@@ -539,20 +541,16 @@ def _do_realm_knock(api, realm_id, no_wait=False):
                     # We don't have any data yet, but the user doesn't
                     # want to wait for it to wake, so make up
                     # something and stop retrying.
-                    retry = False
-                    data = {'address': None, 'pendingUpdate': False, }
+                    return {'address': None, 'pendingUpdate': False,
+                            'knocked': True, }
                 else:
                     # we'll give the realms service a moment to create
-                    # and start up a server for our realm
+                    # and start up a server for our realm, then try
+                    # again for a response
                     sleep(2)
             else:
                 # some other response code, let's propagate that up
                 raise
-        else:
-            # if there was no error, then we don't need to retry
-            retry = False
-
-    return data
 
 
 def cli_command_realm_knock(options):
@@ -1032,14 +1030,18 @@ def cli_command_statistics(options):
     """
 
     api = mojang_api(options)
-    stat = api.statistics()
+
+    if options.stats:
+        stat = api.statistics(options.stats)
+    else:
+        stat = api.statistics()
 
     if options.json:
         pretty(stat)
 
     else:
-        print("Statistics:")
-        for k, v in stat.items():
+        print("Statistic Totals:")
+        for k, v in sorted(stat.items()):
             print("  %s: %s" % (k, v))
 
     return 0
@@ -1047,10 +1049,29 @@ def cli_command_statistics(options):
 
 def cli_subparser_statistics(parent):
     p = subparser(parent, "statistics", cli_command_statistics,
-                  help="Show Mojang's Minecraft sales statistics")
+                  help="Show Mojang's sales statistics")
 
     optional_api_host(p)
     optional_json(p)
+
+    p.add_argument("--minecraft", action="append_const", dest="stats",
+                   const=STATISTIC_MINECRAFT_SOLD,
+                   help="Minecraft copies sold")
+
+    p.add_argument("--minecraft-prepaid", action="append_const", dest="stats",
+                   const=STATISTIC_PREPAID_MINECRAFT_REDEEMED,
+                   help="Minecraft prepaid cards redeemed")
+
+    p.add_argument("--cobalt", action="append_const", dest="stats",
+                   const=STATISTIC_COBALT_SOLD,
+                   help="Cobalt copies sold")
+
+    p.add_argument("--scrolls", action="append_const", dest="stats",
+                   const=STATISTIC_SCROLLS_SOLD,
+                   help="Scrolls copies sold")
+
+    p.add_argument("--other", action="append", dest="stats",
+                   help="Specify an arbitrary statistic key")
 
     return p
 
