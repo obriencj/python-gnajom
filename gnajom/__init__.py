@@ -183,7 +183,8 @@ class GnajomAPI(object):
 
 def usecache(func):
     """
-    Decorator for methods on a GnajomAPI instance
+    Decorator for methods on a GnajomAPI instance, causing them to
+    enable persistent caching if possible.
     """
 
     def wrapper(self, *args, **kwds):
