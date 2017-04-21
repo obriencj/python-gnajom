@@ -19,6 +19,7 @@ and service status
 
 from base64 import b64decode
 from json import loads
+from requests.exceptions import HTTPError
 
 from . import GnajomAPI, usecache
 
@@ -74,7 +75,16 @@ class MojangAPI(GnajomAPI):
         else:
             uri = "/users/profiles/minecraft/%s?at=%i" % (username, at_time)
 
-        return self.api.get(uri)
+        try:
+            return self.api.get(uri)
+
+        except HTTPError as err:
+            # 404 is an expected response if we can't find a username
+            # with that value.
+            if err.response.status_code == 404:
+                return None
+            else:
+                raise
 
 
     @usecache

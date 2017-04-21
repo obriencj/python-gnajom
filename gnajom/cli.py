@@ -791,7 +791,23 @@ def cli_command_user_history(options):
     cli: gnajom user history
     """
 
-    print("NYI")
+    api = mojang_api(options)
+    data = api.uuid_name_history(_pick_profile_uuid(options))
+
+    if options.json:
+        pretty(data)
+        return 0
+
+    timeline = [(moment.get("changedToAt", 0), moment["name"])
+                for moment in data]
+
+    for when, name in sorted(timeline):
+        if not when:
+            print("created as", name)
+        else:
+            whenat = datetime.utcfromtimestamp(when // 1000)
+            print("changed to %s at %s" % (name, whenat))
+
     return 0
 
 
@@ -799,6 +815,12 @@ def cli_subparser_user_history(parent):
     p = subparser(parent, "history", cli_command_user_history)
     optional_api_host(p)
     optional_json(p)
+
+    p.add_argument("profile_uuid", nargs="?", action="store",
+                   help="user to show history for (defaults to auth user)")
+
+    p.add_argument("--by-name", action="store_true", default=False,
+                   help="user specified by name instead of UUID")
 
     return p
 
@@ -896,7 +918,7 @@ def cli_subparser_profile_lookup(parent):
     return p
 
 
-def _pick_uuid(options):
+def _pick_profile_uuid(options):
     """
     Returns a UUID string based on the presence of a profile_uuid
     option, and the --by-name flag. If profile_uuid is not specified,
@@ -914,7 +936,7 @@ def _pick_uuid(options):
     if options.by_name:
         api = mojang_api(options)
         found = api.username_to_uuid(search_val, None)
-        uuid = found.get("id", None)
+        uuid = found.get("id", None) if found else None
 
     else:
         uuid = search_val
@@ -925,13 +947,13 @@ def _pick_uuid(options):
 def _fetch_profile(options):
     """
     This is used by a few commands to fetch profile data either by
-    UUID or by username.
+    profile UUID or by profile name.
 
     It presumes that the options will have profile_uuid and by_name
     """
 
     api = session_api(options)
-    return api.profile_info(_pick_uuid(options))
+    return api.profile_info(_pick_profile_uuid(options))
 
 
 def cli_command_profile_info(options):
@@ -1099,7 +1121,7 @@ def cli_command_skin_upload(options):
     cli: gnajom skin upload
     """
 
-    uuid = _pick_uuid(options)
+    uuid = _pick_profile_uuid(options)
 
     api = mojang_api(options)
     api.upload_skin(uuid, options.skin_file, options.slim_model)
@@ -1133,7 +1155,7 @@ def cli_command_skin_reset(options):
     cli: gnajom skin reset
     """
 
-    uuid = _pick_uuid(options)
+    uuid = _pick_profile_uuid(options)
 
     api = mojang_api(options)
     api.reset_skin(uuid)
