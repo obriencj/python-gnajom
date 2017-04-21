@@ -30,10 +30,13 @@ system.
 
 from __future__ import print_function
 
+import re
 import requests
 import sys
 
-from argparse import ArgumentParser, FileType, _StoreAction, _StoreConstAction
+from argparse import (
+    ArgumentError, ArgumentParser, FileType,
+    _StoreAction, _StoreConstAction, )
 from datetime import datetime
 from getpass import getpass
 from json import dump, loads
@@ -755,9 +758,9 @@ _WHOAMI_DATE_FIELDS = ("dateOfBirth", "migratedAt",
                        "passwordChangedAt", "registeredAt", )
 
 
-def cli_command_user_whoami(options):
+def cli_command_player_whoami(options):
     """
-    cli: gnajom user whoami
+    cli: gnajom player whoami
     """
 
     api = mojang_api(options)
@@ -779,14 +782,14 @@ def cli_command_user_whoami(options):
     return 0
 
 
-def cli_subparser_user_whoami(parent):
-    p = subparser(parent, "whoami", cli_command_user_whoami)
+def cli_subparser_player_whoami(parent):
+    p = subparser(parent, "whoami", cli_command_player_whoami)
     optional_json(p)
 
     return p
 
 
-def cli_command_user_history(options):
+def cli_command_player_history(options):
     """
     cli: gnajom user history
     """
@@ -796,23 +799,23 @@ def cli_command_user_history(options):
 
     if options.json:
         pretty(data)
-        return 0
 
-    timeline = [(moment.get("changedToAt", 0), moment["name"])
-                for moment in data]
+    else:
+        timeline = [(moment.get("changedToAt", 0), moment["name"])
+                    for moment in data]
 
-    for when, name in sorted(timeline):
-        if not when:
-            print("created as", name)
-        else:
-            whenat = datetime.utcfromtimestamp(when // 1000)
-            print("changed to %s at %s" % (name, whenat))
+        for when, name in sorted(timeline):
+            if not when:
+                print("created as", name)
+            else:
+                whenat = datetime.utcfromtimestamp(when // 1000)
+                print("changed to %s at %s" % (name, whenat))
 
     return 0
 
 
-def cli_subparser_user_history(parent):
-    p = subparser(parent, "history", cli_command_user_history)
+def cli_subparser_player_history(parent):
+    p = subparser(parent, "history", cli_command_player_history)
     optional_api_host(p)
     optional_json(p)
 
@@ -825,15 +828,44 @@ def cli_subparser_user_history(parent):
     return p
 
 
-def cli_command_user_profile(options):
+def _fmt(fmt):
+    return lambda d: datetime.strptime(d, fmt)
+
+
+_DATE_FORMATS = (
+    (re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}"), _fmt("%Y-%m-%d %H:%M")),
+    (re.compile(r"\d{4}-\d{2}-\d{2}"), _fmt("%Y-%m-%d")),
+    (re.compile(r"\d{4}-\d{2}"), _fmt("%Y-%m")),
+    (re.compile(r"\d+"), lambda d: datetime.fromtimestamp(int(d))),
+)
+
+
+def datetime_arg(sdate):
+    for rc, fmt in _DATE_FORMATS:
+        mtch = rc.match(sdate)
+        if mtch:
+            try:
+                return fmt(mtch.string)
+            except ValueError as ve:
+                raise ArgumentError(str(ve))
+    else:
+        raise ArgumentError("Invalid date-time format, %r" % sdate)
+
+datetime_arg.__name__ = "datetime"
+
+
+def cli_command_player_profile(options):
     """
     cli: gnajom user profile
     """
 
     api = mojang_api(options)
 
+    whenat = options.date
+    timestamp = int(whenat.timestamp()) if whenat else None
+
     try:
-        info = api.username_to_uuid(options.search_username, options.time)
+        info = api.username_to_uuid(options.search_username, timestamp)
 
     except HTTPError as http_err:
         if http_err.response.status_code == 404:
@@ -855,27 +887,27 @@ def cli_command_user_profile(options):
         return 1
 
 
-def cli_subparser_user_profile(parent):
-    p = subparser(parent, "profile", cli_command_user_profile)
+def cli_subparser_player_profile(parent):
+    p = subparser(parent, "profile", cli_command_player_profile)
     optional_api_host(p)
     optional_json(p)
 
     p.add_argument("search_username",
                    help="username to search for")
 
-    p.add_argument("--time", default=None, type=int,
-                   help="timestamp to search at")
+    p.add_argument("--date", default=None, type=datetime_arg,
+                   help="ISO-8601 formatted date to search at")
 
     return p
 
 
-def cli_subparser_user(parent):
+def cli_subparser_player(parent):
     p = subparser(parent, "user",
                   help="Commands related to user accounts")
 
-    cli_subparser_user_whoami(p)
-    cli_subparser_user_history(p)
-    cli_subparser_user_profile(p)
+    cli_subparser_player_whoami(p)
+    cli_subparser_player_history(p)
+    cli_subparser_player_profile(p)
 
     return p
 
@@ -967,8 +999,9 @@ def cli_command_profile_info(options):
         pretty(info)
 
     else:
-        for item in info:
-            print("%s: %r" % item)
+        # TODO, this is a crap output
+        for k, v in info.items():
+            print("%s: %r" % (k, v))
 
     return 0
 
@@ -1414,7 +1447,7 @@ def cli_argparser(argv=None):
     cli_subparser_realms(parser)
     cli_subparser_status(parser)
     cli_subparser_statistics(parser)
-    cli_subparser_user(parser)
+    cli_subparser_player(parser)
     cli_subparser_profile(parser)
     cli_subparser_skin(parser)
     # cli_subparser_blocked(parser)

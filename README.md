@@ -38,9 +38,9 @@ number of available calls in the various Mojang public APIs.
 |`gnajom realm download REALM_ID WORLD_SLOT` |Download world data from a realm |
 |`gnajom status` |Show the status of public Mojang services |
 |`gnajom statistics` |Show Mojang's sales statistics |
-|`gnajom user whoami` |Print information for the current user account |
-|`gnajom user history PLAYER_NAME` |NYI |
-|`gnajom user profile PLAYER_NAME` |Find a user's profile |
+|`gnajom player whoami` |Print information for the current auth account |
+|`gnajom player history PLAYER_NAME` |Profile name history for a player |
+|`gnajom player profile PLAYER_NAME` |Find a player's profile |
 |`gnajom profile lookup PLAYER_NAME ...` |Search for profile information |
 |`gnajom profile info PROFILE_ID` |Show information about a profile |
 |`gnajom skin change URL` |Set profile skin to an existing skin URL |
