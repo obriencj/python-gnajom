@@ -26,7 +26,8 @@ from . import APIHost
 
 __all__ = (
     "Authentication", "auth_from_file", "generate_clientToken",
-    "HOST_YGGDRASIL", "DEFAULT_AUTH_HOST", "MINECRAFT_AGENT_V1", )
+    "HOST_YGGDRASIL", "DEFAULT_AUTH_HOST", "MINECRAFT_AGENT_V1",
+    "GNAJOM_CLIENT_TOKEN", )
 
 
 HOST_YGGDRASIL = "https://authserver.mojang.com"
@@ -38,6 +39,8 @@ MINECRAFT_AGENT_V1 = {
     "version": 1,
 }
 
+GNAJOM_CLIENT_TOKEN = "python-gnajom.preoccupied.net"
+
 
 class Authentication(object):
     """
@@ -48,7 +51,8 @@ class Authentication(object):
     * http://wiki.vg/Authentication
     """
 
-    def __init__(self, username, clientToken=None, accessToken=None,
+    def __init__(self, username, clientToken=GNAJOM_CLIENT_TOKEN,
+                 accessToken=None,
                  host=HOST_YGGDRASIL, agent=MINECRAFT_AGENT_V1):
 
         self.api = APIHost(host)

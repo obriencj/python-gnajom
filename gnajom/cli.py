@@ -48,7 +48,7 @@ from configparser import SafeConfigParser
 
 from . import APICache
 
-from .auth import Authentication, DEFAULT_AUTH_HOST
+from .auth import Authentication, DEFAULT_AUTH_HOST, GNAJOM_CLIENT_TOKEN
 
 from .realms import RealmsAPI, DEFAULT_REALMS_HOST, DEFAULT_REALMS_VERSION
 
@@ -156,23 +156,28 @@ def cli_command_auth_connect(options):
             return 0
 
         else:
-            # then this stuff is trash, throw it out
+            # then this token is trash, throw it out
             auth.accessToken = None
-            auth.clientToken = None
 
+    username = (options.username or auth.username)
     password = (options.password or
-                getpass("password for %s: " % auth.username))
+                getpass("password for %s: " % username))
 
     if options.request_client_token:
         # we have explicitly been told to have the server give us
         # a token, even if we had one saved.
         auth.clientToken = None
 
-    elif not auth.clientToken:
-        # otherwise, if we don't have a token already we'd better
-        # generate one.
+    elif options.random_client_token:
+        # we have explicitly been told to generate a new random client
+        # token
+        auth.clientToken = None
         auth.ensureClientToken()
 
+    else:
+        auth.clientToken = options.client_token or GNAJOM_CLIENT_TOKEN
+
+    auth.username = username
     if auth.authenticate(password):
         save_auth(options, auth)
         return 0
@@ -191,14 +196,22 @@ def cli_subparser_auth_connect(parent):
     p.add_argument("--refresh", action="store_true", default=False,
                    help="refresh rather than re-auth if possible")
 
-    p.add_argument("--user", action="store", dest="username",
-                   help="Mojang username")
+    p.add_argument("--username", "-U", action="store",
+                   help="Mojang account username")
 
-    p.add_argument("--password", action="store",
-                   help="Mojang password")
+    p.add_argument("--password", "-P", action="store",
+                   help="Mojang account password")
 
-    p.add_argument("--request-client-token", action="store_true",
+    g = p.add_mutually_exclusive_group()
+
+    g.add_argument("--request-client-token", action="store_true",
                    help="Request that the server provide a client token")
+
+    g.add_argument("--random-client-token", action="store_true",
+                   help="Generate a random client token")
+
+    g.add_argument("--client-token", action="store", default=None,
+                   help="Use the specified client token")
 
     return p
 
