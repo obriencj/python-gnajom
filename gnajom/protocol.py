@@ -236,11 +236,13 @@ class ProtocolPacketMeta(type):
             assert(new_packet_key not in packet_ids)
             packet_ids[new_packet_key] = cls
 
+
     @staticmethod
     def for_clientbound_packet_id(state_packet_id):
         packet_ids = ProtocolPacketMeta.CLIENTBOUND_PACKET_IDS
         pclass = packet_ids[state_packet_id]
         return ProtocolPacket.__new__(pclass)
+
 
     @staticmethod
     def for_serverbound_packet_id(state_packet_id):

@@ -51,8 +51,6 @@ setup(name = "gnajom",
 
       zip_safe = True,
 
-      # use_2to3 = True,
-
       classifiers = [
           "Environment :: Console",
           "Programming Language :: Python :: 3",
