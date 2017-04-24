@@ -34,6 +34,7 @@ import re
 import requests
 import sys
 
+from appdirs import AppDirs
 from argparse import (
     ArgumentError, ArgumentParser, FileType,
     _StoreAction, _StoreConstAction, )
@@ -41,7 +42,7 @@ from datetime import datetime
 from getpass import getpass
 from json import dump, loads
 from os import chmod, makedirs
-from os.path import basename, exists, expanduser, split
+from os.path import basename, exists, join, split
 from requests.exceptions import HTTPError
 from time import sleep
 from configparser import SafeConfigParser
@@ -62,11 +63,12 @@ from .mojang import (
 from .slp import legacy_slp
 
 
-DEFAULT_CONFIG_FILE = expanduser("~/.gnajom/gnajom.conf")
-DEFAULT_SESSION_FILE = expanduser("~/.gnajom/session")
+_APPDIR = AppDirs("gnajom")
 
+DEFAULT_CONFIG_FILE = join(_APPDIR.user_config_dir, "gnajom.conf")
+DEFAULT_SESSION_FILE = join(_APPDIR.user_config_dir, "session")
 
-DEFAULT_CACHE_FILE = expanduser("~/.gnajom/api_cache")
+DEFAULT_CACHE_FILE = join(_APPDIR.user_cache_dir, "api_cache")
 DEFAULT_CACHE_TYPE = "sqlite"
 DEFAULT_CACHE_EXPIRY = 600  # in seconds
 
@@ -159,7 +161,8 @@ def cli_command_auth_connect(options):
             # then this token is trash, throw it out
             auth.accessToken = None
 
-    username = (options.username or auth.username)
+    username = (options.username or auth.username or
+                input("username: "))
     password = (options.password or
                 getpass("password for %s: " % username))
 
@@ -1332,8 +1335,14 @@ def _cli_api_debug_hook(response):
 
 def api_cache(options):
     cache = getattr(options, "cache", None)
+
     if cache is None:
-        cache = APICache(options.cache_file, options.cache_type,
+        cache_file = options.cache_file or DEFAULT_CACHE_FILE
+        path, _ = split(cache_file)
+        if not exists(path):
+            makedirs(path)
+
+        cache = APICache(cache_file, options.cache_type,
                          options.cache_expiry)
         options.cache = cache
 
