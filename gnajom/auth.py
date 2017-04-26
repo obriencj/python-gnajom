@@ -226,12 +226,16 @@ class Authentication(object):
         filename
         """
 
+        with open(filename, "w") as fd:
+            self.write(fd)
+
+
+    def write(self, stream):
         session = dict(self.__dict__)
         session["host"] = self.api._host
         del session["api"]
 
-        with open(filename, "w") as fd:
-            dump(session, fd)
+        dump(session, stream)
 
 
     def ensureClientToken(self):

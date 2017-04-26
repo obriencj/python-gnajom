@@ -40,7 +40,7 @@ from argparse import (
     _StoreAction, _StoreConstAction, )
 from datetime import datetime
 from getpass import getpass
-from json import dump, loads
+from json import dump, load, loads
 from os import chmod, makedirs
 from os.path import basename, exists, join, split
 from requests.exceptions import HTTPError
@@ -400,6 +400,74 @@ def cli_subparser_auth_show(parent):
     return p
 
 
+def cli_command_auth_import(options):
+    """
+    cli: gnajom auth import
+    """
+
+    # 1. find the minecraft launcher config
+    # 2. load the json, find the sessions portion
+    # 3. copy selected session into the specified session file
+
+    lpf = options.launcher_profiles
+    if lpf is None:
+        mad = AppDirs("minecraft")
+        lpfn = join(mad.user_config_dir, "launcher_profiles.json")
+
+        if not exists(lpfn):
+            print("No such file:", lpfn, file=sys.stderr)
+            return -1
+
+        lpf = open(lpfn, "rt")
+
+    with lpf:
+        profiles = load(lpf)
+
+    # this is a convoluted disaster to translate between the two
+    # formats, but it works!
+    clientToken = profiles["clientToken"]
+    selected_user = profiles["selectedUser"]["account"]
+    selected_profile = profiles["selectedUser"]["profile"]
+    adb = profiles["authenticationDatabase"][selected_user]
+    username = adb["username"]
+    accessToken = adb["accessToken"]
+    adbp = adb["profiles"][selected_profile]
+    profilename = adbp["displayName"]
+
+    auth = options.auth
+    auth.username = username
+    auth.accessToken = accessToken
+    auth.clientToken = clientToken
+    auth.user["id"] = selected_user
+    auth.selectedProfile["id"] = selected_profile
+    auth.selectedProfile["name"] = profilename
+
+    # mixing string filenames with the argparse FileType arguments
+    # is a real pain in the ass.
+    nsf = options.new_session_file
+    if nsf is None:
+        save_auth(auth, options)
+    else:
+        with nsf:
+            auth.write(nsf)
+
+
+def cli_subparser_auth_import(parent):
+    p = subparser(parent, "import", cli_command_auth_import,
+                  help="Import session from Minecraft launcher")
+
+    p.add_argument("new_session_file", nargs="?", default=None,
+                   action="store", type=FileType("w"),
+                   help="Optional alternative file to write session to, or"
+                   " - to write to stdout")
+
+    p.add_argument("--launcher-profiles", default=None,
+                   action="store", type=FileType("rt"),
+                   help="Path to launcher_profiles.json to load")
+
+    return p
+
+
 def cli_subparser_auth(parent):
     p = subparser(parent, "auth",
                   help="Commands related to authentication")
@@ -410,6 +478,7 @@ def cli_subparser_auth(parent):
     cli_subparser_auth_invalidate(p)
     cli_subparser_auth_signout(p)
     cli_subparser_auth_show(p)
+    cli_subparser_auth_import(p)
 
     return p
 
@@ -1326,19 +1395,26 @@ def cli_command_config_write(options):
     cli: gnajom config write
     """
 
-    c = SafeConfigParser()
-    c.add_section("defaults")
+    cparser = SafeConfigParser()
+    cparser.add_section("defaults")
 
     for key, val in sorted(DEFAULTS.items()):
         if key == "config_file":
             continue
 
         val = getattr(options, key, val)
-        c.set("defaults", key, str(val))
+        cparser.set("defaults", key, str(val))
 
-    output = options.new_conf_file or open(options.config_file, "wt")
+    output = options.new_conf_file
+    if not output:
+        config_file = options.config_file
+        config_dir, _ = split(config_file)
+        if not exists(config_dir):
+            makedirs(config_dir)
+        output = open(config_file, "wt")
+
     with output:
-        c.write(output)
+        cparser.write(output)
 
 
 def cli_subparser_config_write(parent):
@@ -1348,7 +1424,7 @@ def cli_subparser_config_write(parent):
     p.add_argument("new_conf_file", nargs="?", default=None,
                    action="store", type=FileType('w'),
                    help="Optional alternative file to write config, or"
-                   "- to write to stdout")
+                   " - to write to stdout")
 
     return p
 
