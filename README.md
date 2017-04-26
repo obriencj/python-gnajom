@@ -31,6 +31,7 @@ number of available calls in the various Mojang public APIs.
 |`gnajom auth invalidate` |Invalidates the current auth session |
 |`gnajom auth signout`  |Sign out all sessions for this account |
 |`gnajom auth show` |Print authentication information |
+|`gnajom auth import` |Import auth session from Minecraft launcher |
 |`gnajom realm list` |Print realms available to current user |
 |`gnajom realm info REALM_ID` |Print detailed information about a realm |
 |`gnajom realm knock REALM_ID` |Ensure a realm is running, print its address |
@@ -66,6 +67,8 @@ tricky to distinguish which one you should use.
 - [requests_cache](https://pypi.python.org/pypi/requests-cache)
   (optional feature) to enable caching HTTP API call results and
   avoiding rate-limit errors
+- [AppDirs](https://pypi.python.org/pypi/appdirs) for picking the
+  right place to store and load config across platforms
 
 
 ## Author
