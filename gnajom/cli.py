@@ -65,7 +65,7 @@ from .slp import legacy_slp
 
 _APPDIR = AppDirs("gnajom")
 
-DEFAULT_CONFIG_FILE = join(_APPDIR.user_config_dir, "gnajom.conf")
+DEFAULT_CONFIG_FILE = join(_APPDIR.user_config_dir, "config")
 DEFAULT_SESSION_FILE = join(_APPDIR.user_config_dir, "session")
 
 DEFAULT_CACHE_FILE = join(_APPDIR.user_cache_dir, "api_cache")
@@ -74,7 +74,6 @@ DEFAULT_CACHE_EXPIRY = 600  # in seconds
 
 
 DEFAULTS = {
-    "username": None,
     "config_file": DEFAULT_CONFIG_FILE,
     "session_file": DEFAULT_SESSION_FILE,
     "auth_host": DEFAULT_AUTH_HOST,
@@ -113,9 +112,8 @@ def pretty(obj, out=sys.stdout):
 
 
 def load_auth(options):
-    # print "load_auth", options.username, options.session_file
-
-    auth = Authentication(options.username, host=options.auth_host)
+    username = getattr(options, "username", None)
+    auth = Authentication(username, host=options.auth_host)
 
     session = options.session_file or DEFAULT_SESSION_FILE
     if exists(session):
@@ -301,8 +299,7 @@ def cli_command_auth_signout(options):
     cli: gnajom auth signout
     """
 
-    # use a clean Authentication rather than a loaded session
-    auth = Authentication(options.username, host=options.auth_host)
+    auth = load_auth(options)
 
     password = (options.password or
                 getpass("password for %s: " % auth.username))
@@ -317,11 +314,11 @@ def cli_subparser_auth_signout(parent):
 
     optional_auth_host(p)
 
-    p.add_argument("--user", action="store", dest="username",
-                   help="Mojang username")
+    p.add_argument("--username", "-U", action="store",
+                   help="Mojang account username")
 
-    p.add_argument("--password", action="store",
-                   help="Mojang password")
+    p.add_argument("--password", "-P", action="store",
+                   help="Mojang account password")
 
     return p
 
@@ -1321,6 +1318,70 @@ def cli_subparser_skin(parent):
 # def cli_subparser_blocked(parent):
 #    p = subparser(parent, "blocked", cli_command_blocked)
 #    optional_session_host(p)
+#    return p
+
+
+def cli_command_config_write(options):
+    """
+    cli: gnajom config write
+    """
+
+    c = SafeConfigParser()
+    c.add_section("defaults")
+
+    for key, val in sorted(DEFAULTS.items()):
+        if key == "config_file":
+            continue
+
+        val = getattr(options, key, val)
+        c.set("defaults", key, str(val))
+
+    output = options.new_conf_file or open(options.config_file, "wt")
+    with output:
+        c.write(output)
+
+
+def cli_subparser_config_write(parent):
+    p = subparser(parent, "write", cli_command_config_write,
+                  help="Write out a conf file from current configuration")
+
+    p.add_argument("new_conf_file", nargs="?", default=None,
+                   action="store", type=FileType('w'),
+                   help="Optional alternative file to write config, or"
+                   "- to write to stdout")
+
+    return p
+
+
+def cli_command_config_show(options):
+    """
+    cli: gnajom config show
+    """
+
+    # this should represent the DEFAULTS, and any configuration values
+    # loaded from the config file on top of that.
+    for key, val in sorted(DEFAULTS.items()):
+        val = getattr(options, key, val)
+        print("%s: %r" % (key, val))
+
+    return 0
+
+
+def cli_subparser_config_show(parent):
+    p = subparser(parent, "show", cli_command_config_show,
+                  help="Print current configuration setting")
+
+    return p
+
+
+def cli_subparser_config(parent):
+    p = subparser(parent, "config",
+                  help="Commands for dealing with CLI configuration")
+
+    cli_subparser_config_write(p)
+    cli_subparser_config_show(p)
+
+    return p
 
 
 # --- CLI setup and entry point ---
@@ -1337,13 +1398,15 @@ def api_cache(options):
     cache = getattr(options, "cache", None)
 
     if cache is None:
+        expiry = int(options.cache_expiry) or DEFAULT_CACHE_EXPIRY
         cache_file = options.cache_file or DEFAULT_CACHE_FILE
+        cache_type = options.cache_type or DEFAULT_CACHE_TYPE
+
         path, _ = split(cache_file)
         if not exists(path):
             makedirs(path)
 
-        cache = APICache(cache_file, options.cache_type,
-                         options.cache_expiry)
+        cache = APICache(cache_file, cache_type, expiry)
         options.cache = cache
 
     return cache
@@ -1385,6 +1448,10 @@ def optional_json(parser):
     return parser
 
 
+# these are the action types which we want to inherit in subparsers
+_inherit_actions = (_StoreAction, _StoreConstAction)
+
+
 def subparser(parser, name, cli_func=None, help=None):
     # the default behaviour for subcommands is kinda shit. They don't
     # properly inherit defaults, nor parent arguments, and for some
@@ -1402,8 +1469,9 @@ def subparser(parser, name, cli_func=None, help=None):
     sp = subs.add_parser(name, help=help, description=help)
 
     # "inherit" the parent command optional arguments
+    _storeacts = _inherit_actions
     for act in parser._subparsers._actions:
-        if isinstance(act, (_StoreAction, _StoreConstAction)):
+        if isinstance(act, _storeacts):
             sp._add_action(act)
 
     # "inherit" the parent command defaults
@@ -1414,7 +1482,8 @@ def subparser(parser, name, cli_func=None, help=None):
             sp.print_usage(sys.stderr)
             return 1
 
-    # set the cli handler function for this command
+    # set the cli handler function for this command. We just borrow a
+    # defaults value for this purpose.
     sp.set_defaults(cli_func=cli_func)
 
     return sp
@@ -1473,6 +1542,7 @@ def cli_argparser(argv=None):
     cli_subparser_profile(parser)
     cli_subparser_skin(parser)
     # cli_subparser_blocked(parser)
+    cli_subparser_config(parser)
 
     return parser
 
