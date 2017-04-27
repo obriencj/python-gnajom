@@ -714,13 +714,38 @@ def cli_subparser_realm_legacyping(parent):
     return p
 
 
+_REALM_BACKUP_FMT = "[id: {backupId}] {lastModifiedDate}, {size} bytes"
+
+
 def cli_command_realm_backups(options):
     """
     cli: gnajom realm backups
     """
 
     api = realms_api(options)
-    print(api.realm_backups(options.realm_id))
+    data = api.realm_backups(options.realm_id)
+
+    if options.json:
+        pretty(data)
+
+    else:
+        backups = data["backups"]
+        for back in sorted(backups, key=lambda b: b["lastModifiedDate"],
+                           reverse=True):
+
+            lmd = int(back["lastModifiedDate"]) // 1000
+            lmd = datetime.utcfromtimestamp(lmd)
+            back["lastModifiedDate"] = lmd
+
+            print(_REALM_BACKUP_FMT.format(**back))
+            if options.details:
+                details = back["metadata"]
+                print("  Name:", details["name"])
+                print("  Description:", details["description"])
+                print("  Difficulty:", details["game_difficulty"])
+                print("  Mode:", details["game_mode"])
+                print("  Type:", details["world_type"])
+
     return 0
 
 
@@ -728,7 +753,13 @@ def cli_subparser_realm_backups(parent):
     p = subparser(parent, "backups", cli_command_realm_backups,
                   help="List available backups for a realm")
 
-    p.add_argument("realm_id", action="store", type=int)
+    p.add_argument("realm_id", action="store", type=int,
+                   help="ID of realm to which this account has admin access")
+
+    p.add_argument("--details", action="store_true", default=False,
+                   help="Show additional details for each backup")
+
+    optional_json(p)
 
     return p
 
@@ -1650,8 +1681,9 @@ def main(argv=None):
         return 1
 
     except HTTPError as http_err:
-        if http_err.response.status_code == 429:
-            # this is a somewhat expected occurance, so we want to
+        resp = http_err.response
+        if resp.status_code in (403, 429):
+            # these are a somewhat expected occurance, so we want to
             # handle it more gracefully than with a backtrace.
             print(http_err, file=sys.stderr)
             return 1
