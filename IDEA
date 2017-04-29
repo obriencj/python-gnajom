@@ -1,6 +1,6 @@
 
 
-# looks in the ~/.gnajom/settings.conf for the profile, loads
+# looks in the ~/.gnajom/config for the profile, loads
 # those settings (username, server) and authenticates. If password is
 # undefined, prompt for it. This will write out a session file.
 
@@ -10,7 +10,7 @@ gnajom auth connect
 # uses a specific username and session file, ignoring those settings
 # from ~/.gnajom/settings.conf
 
-gnajom auth connect --user someone@gmail.com --session ~/.gnajom/someone.session
+gnajom auth connect --user someone@gmail.com --session ~/.gnajom/session
 
 
 # attempts to auth as above, but first checks for session file and tries
@@ -61,7 +61,30 @@ gnajom realm backups $realm_id
 # download the latest backup as a zip file for a given world on a
 #  realm
 
-gnajom realm backups download $realm_id $world_number
+gnajom realm download $realm_id $world_number
+
+
+Wishlist:
+
+
+# show the worlds attached to a realm
+gnajom realm world list $realm_id
+
+
+# pick a world for a realm
+gnajom realm world select $realm_id $world_number
+
+
+# upload into a world for a realm
+gnajom realm world upload $realm_id $world_number
+
+
+# delete a world for a realm
+gnajom realm world delete $realm_id $world_number
+
+
+# initialize a world for a realm
+gnajom realm world init $realm_id $world_number
 
 
 #
