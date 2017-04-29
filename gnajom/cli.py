@@ -192,8 +192,6 @@ def cli_subparser_auth_connect(parent):
     p = subparser(parent, "connect", cli_command_auth_connect,
                   help="Connect and create a new auth session")
 
-    optional_auth_host(p)
-
     p.add_argument("--refresh", action="store_true", default=False,
                    help="refresh rather than re-auth if possible")
 
@@ -311,8 +309,6 @@ def cli_command_auth_signout(options):
 def cli_subparser_auth_signout(parent):
     p = subparser(parent, "signout", cli_command_auth_signout,
                   help="Sign out all sessions for this account")
-
-    optional_auth_host(p)
 
     p.add_argument("--username", "-U", action="store",
                    help="Mojang account username")
@@ -790,6 +786,7 @@ def cli_command_realm_download(options):
             for chunk in resp.iter_content(chunk_size=2**20):
                 out.write(chunk)
                 total_size += len(chunk)
+
     except Exception as e:
         print(e)
         return -1
@@ -815,8 +812,6 @@ def cli_subparser_realm_download(parent):
 def cli_subparser_realms(parent):
     p = subparser(parent, "realm",
                   help="Commands related to Mojang's Minecraft Realms")
-
-    optional_realms_host(p)
 
     cli_subparser_realm_list(p)
     cli_subparser_realm_info(p)
@@ -929,7 +924,7 @@ def cli_command_player_history(options):
 
 def cli_subparser_player_history(parent):
     p = subparser(parent, "history", cli_command_player_history)
-    optional_api_host(p)
+
     optional_json(p)
 
     p.add_argument("profile_uuid", nargs="?", action="store",
@@ -1002,7 +997,7 @@ def cli_command_player_profile(options):
 
 def cli_subparser_player_profile(parent):
     p = subparser(parent, "profile", cli_command_player_profile)
-    optional_api_host(p)
+
     optional_json(p)
 
     p.add_argument("search_username",
@@ -1051,7 +1046,7 @@ def cli_command_profile_lookup(options):
 
 def cli_subparser_profile_lookup(parent):
     p = subparser(parent, "lookup", cli_command_profile_lookup)
-    optional_api_host(p)
+
     optional_json(p)
 
     p.add_argument("search_players", nargs="*", action="store", type=str,
@@ -1123,7 +1118,6 @@ def cli_subparser_profile_info(parent):
     p = subparser(parent, "info", cli_command_profile_info,
                   help="Show information about a profile")
 
-    optional_api_host(p)
     optional_json(p)
 
     p.add_argument("profile_uuid", action="store")
@@ -1186,7 +1180,6 @@ def cli_subparser_status(parent):
     p = subparser(parent, "status", cli_command_status,
                   help="Show the status of public Mojang services")
 
-    optional_status_host(p)
     optional_json(p)
 
     return p
@@ -1219,7 +1212,6 @@ def cli_subparser_statistics(parent):
     p = subparser(parent, "statistics", cli_command_statistics,
                   help="Show Mojang's sales statistics")
 
-    optional_api_host(p)
     optional_json(p)
 
     p.add_argument("--minecraft", action="append_const", dest="stats",
@@ -1257,8 +1249,6 @@ def cli_subparser_skin_change(parent):
     p = subparser(parent, "change", cli_command_skin_change,
                   help="Set profile skin to an existing skin URL")
 
-    optional_api_host(p)
-
     return p
 
 
@@ -1278,8 +1268,6 @@ def cli_command_skin_upload(options):
 def cli_subparser_skin_upload(parent):
     p = subparser(parent, "upload", cli_command_skin_upload,
                   help="Upload a file and set it as the profile skin")
-
-    optional_api_host(p)
 
     p.add_argument("skin_file", action="store", type=FileType('rb'),
                    help="Skin image file")
@@ -1312,8 +1300,6 @@ def cli_command_skin_reset(options):
 def cli_subparser_skin_reset(parent):
     p = subparser(parent, "reset", cli_command_skin_reset,
                   help="Reset a profile's skin to the default")
-
-    optional_api_host(p)
 
     p.add_argument("profile_uuid", nargs="?", action="store",
                    help="profile to set skin (defaults to auth profile)")
@@ -1376,8 +1362,6 @@ def cli_subparser_skin_download(parent):
     p = subparser(parent, "download", cli_command_skin_download,
                   help="Download the skin for a profile")
 
-    optional_api_host(p)
-
     p.add_argument("profile_uuid", nargs="?", action="store",
                    help="profile to fetch skin from (defaults to auth"
                    " profile)")
@@ -1417,7 +1401,6 @@ def cli_subparser_skin(parent):
 
 # def cli_subparser_blocked(parent):
 #    p = subparser(parent, "blocked", cli_command_blocked)
-#    optional_session_host(p)
 #    return p
 
 
@@ -1501,11 +1484,19 @@ def _cli_api_debug_hook(response):
     return response
 
 
+def safe_int(val, default=0):
+    try:
+        val = int(val)
+    except ValueError:
+        val = default
+    return val
+
+
 def api_cache(options):
     cache = getattr(options, "cache", None)
 
     if cache is None:
-        expiry = int(options.cache_expiry) or DEFAULT_CACHE_EXPIRY
+        expiry = safe_int(options.cache_expiry, DEFAULT_CACHE_EXPIRY)
         cache_file = options.cache_file or DEFAULT_CACHE_FILE
         cache_type = options.cache_type or DEFAULT_CACHE_TYPE
 
@@ -1517,36 +1508,6 @@ def api_cache(options):
         options.cache = cache
 
     return cache
-
-
-def optional_realms_host(parser):
-    parser.add_argument("--realms-host", action="store",
-                        help="Mojang Realms API host")
-    return parser
-
-
-def optional_api_host(parser):
-    parser.add_argument("--api-host", action="store",
-                        help="Mojang Public API host")
-    return parser
-
-
-def optional_session_host(parser):
-    parser.add_argument("--session-host", action="store",
-                        help="Mojang Sessions API host")
-    return parser
-
-
-def optional_status_host(parser):
-    parser.add_argument("--status-host", action="store",
-                        help="Mojang Status API host")
-    return parser
-
-
-def optional_auth_host(parser):
-    parser.add_argument("--auth-host", action="store",
-                        help="Yggdrasil Authentication host")
-    return parser
 
 
 def optional_json(parser):
@@ -1576,14 +1537,17 @@ def subparser(parser, name, cli_func=None, help=None):
     sp = subs.add_parser(name, help=help, description=help)
 
     # "inherit" the parent command optional arguments
-    _storeacts = _inherit_actions
     for act in parser._subparsers._actions:
-        if isinstance(act, _storeacts):
+        if isinstance(act, _inherit_actions):
             sp._add_action(act)
 
     # "inherit" the parent command defaults
     sp._defaults.update(parser._defaults)
 
+    # cli_func will be what is called when this subparser is the last
+    # command given. In instances where the subparser is only used to
+    # gather up a group of sub-commands, then we'll use this function
+    # to print help information.
     if cli_func is None:
         def cli_func(_):
             sp.print_usage(sys.stderr)
@@ -1638,6 +1602,9 @@ def cli_argparser(argv=None):
     parser.add_argument("-s", "--session-file", action="store",
                         help="Session auth file")
 
+    parser.add_argument("-O", dest="opts", action="append", default=list(),
+                        help="Configuration to override, as var=val")
+
     parser.add_argument("--debug-cache", action="store_true", default=False,
                         help="Print debugging information about cached calls")
 
@@ -1654,6 +1621,24 @@ def cli_argparser(argv=None):
     return parser
 
 
+def handle_magic_opts(options):
+    """
+    Used by `main()` to organize and transform some option settings
+    """
+
+    # go through the -O opts, split them as key=val and any key in
+    # DEFAULTS can be used to override the value currently in options
+    for opt in options.opts:
+        key, val = opt.split("=", 1)
+        if key in DEFAULTS:
+            setattr(options, key, val)
+
+    # we'll always want an auth object, so get one
+    options.auth = load_auth(options)
+
+    return options
+
+
 def main(argv=None):
     """
     Primary CLI entry-point.
@@ -1668,8 +1653,12 @@ def main(argv=None):
 
     try:
         parser = cli_argparser(argv)
+
         options = parser.parse_args(argv[1:])
-        options.auth = load_auth(options)
+        options = handle_magic_opts(options)
+
+        # there should never be a point where cli_func isn't set.
+        assert(options.cli_func is not None)
 
         # cli_func is defined as a default value for each individual
         # subcommand parser, see subparser()
