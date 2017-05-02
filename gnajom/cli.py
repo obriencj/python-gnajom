@@ -37,7 +37,7 @@ import sys
 from appdirs import AppDirs
 from argparse import (
     ArgumentError, ArgumentParser, FileType,
-    _StoreAction, _StoreConstAction, )
+    _AppendAction, _AppendConstAction, _StoreAction, _StoreConstAction, )
 from datetime import datetime
 from getpass import getpass
 from json import dump, load, loads
@@ -1527,7 +1527,9 @@ def optional_json(parser):
 
 
 # these are the action types which we want to inherit in subparsers
-_inherit_actions = (_StoreAction, _StoreConstAction)
+_inherit_actions = (
+    _AppendAction, _AppendConstAction,
+    _StoreAction, _StoreConstAction, )
 
 
 def subparser(parser, name, cli_func=None, help=None):
@@ -1612,7 +1614,7 @@ def cli_argparser(argv=None):
     parser.add_argument("-s", "--session-file", action="store",
                         help="Session auth file")
 
-    parser.add_argument("-O", dest="opts", action="append", default=list(),
+    parser.add_argument("-O", dest="opt_val", action="append", default=list(),
                         help="Configuration to override, as var=val")
 
     parser.add_argument("--debug-cache", action="store_true", default=False,
@@ -1638,7 +1640,7 @@ def handle_magic_opts(options):
 
     # go through the -O opts, split them as key=val and any key in
     # DEFAULTS can be used to override the value currently in options
-    for opt in options.opts:
+    for opt in options.opt_val:
         key, val = opt.split("=", 1)
         if key in DEFAULTS:
             setattr(options, key, val)
