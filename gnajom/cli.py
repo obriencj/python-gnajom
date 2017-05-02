@@ -73,6 +73,10 @@ DEFAULT_CACHE_TYPE = "sqlite"
 DEFAULT_CACHE_EXPIRY = 600  # in seconds
 
 
+# this represents the initial settings of these values on the options
+# namespace object we'll eventually pass around to all the cli
+# functions. These values may be overridden in the config file, or by
+# specifying `-O KEY=VAL`
 DEFAULTS = {
     "config_file": DEFAULT_CONFIG_FILE,
     "session_file": DEFAULT_SESSION_FILE,
@@ -244,7 +248,9 @@ def cli_command_auth_refresh(options):
     auth = options.auth
 
     if not auth.accessToken:
-        print("No session data")
+        print("No session data to refresh.",
+              "Try `gnajom auth connect` instead.",
+              file=sys.stderr)
         return -1
 
     if options.force or not auth.validate():
@@ -941,6 +947,7 @@ def _fmt(fmt):
 
 
 _DATE_FORMATS = (
+    (re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}"), _fmt("%Y-%m-%dT%H:%M")),
     (re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}"), _fmt("%Y-%m-%d %H:%M")),
     (re.compile(r"\d{4}-\d{2}-\d{2}"), _fmt("%Y-%m-%d")),
     (re.compile(r"\d{4}-\d{2}"), _fmt("%Y-%m")),
@@ -959,7 +966,10 @@ def datetime_arg(sdate):
     else:
         raise ArgumentError("Invalid date-time format, %r" % sdate)
 
-datetime_arg.__name__ = "datetime"
+
+# we setting the __name__ because that's how argparse will complain
+# about the type if an ArgumentError is raised
+datetime_arg.__name__ = "date-time"
 
 
 def cli_command_player_profile(options):
