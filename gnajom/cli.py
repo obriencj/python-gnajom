@@ -12,6 +12,10 @@
 # License along with this library; if not, see
 # <http://www.gnu.org/licenses/>.
 
+# Note that this is by far the largest module in this package,
+# primarily because it has to act as the front-end between human-input
+# and human-readable output.
+
 
 """
 gnajom.cli - Module with command-line features for gnajom.
@@ -22,13 +26,6 @@ system.
 :license: LGPL v3
 """
 
-
-# Note that this is by far the largest module in this package,
-# primarily because it has to act as the front-end between human-input
-# and human-readable output.
-
-
-from __future__ import print_function
 
 import re
 import requests
@@ -303,6 +300,7 @@ def cli_command_auth_signout(options):
     cli: gnajom auth signout
     """
 
+    # don't use the existing options.auth
     auth = load_auth(options)
 
     password = (options.password or
@@ -459,7 +457,7 @@ def cli_subparser_auth_import(parent):
                   help="Import session from Minecraft launcher")
 
     p.add_argument("new_session_file", nargs="?", default=None,
-                   action="store", type=FileType("w"),
+                   action="store", type=FileType("wt"),
                    help="Optional alternative file to write session to, or"
                    " - to write to stdout")
 
@@ -1062,7 +1060,7 @@ def cli_subparser_profile_lookup(parent):
     p.add_argument("search_players", nargs="*", action="store", type=str,
                    help="usernames to look up")
 
-    p.add_argument("--from-file", action="store", type=FileType('r'),
+    p.add_argument("--from-file", action="store", type=FileType('rt'),
                    help="load list of usernames from file, or - for stdin")
 
     return p
@@ -1446,7 +1444,7 @@ def cli_subparser_config_write(parent):
                   help="Write out a conf file from current configuration")
 
     p.add_argument("new_conf_file", nargs="?", default=None,
-                   action="store", type=FileType('w'),
+                   action="store", type=FileType('wt'),
                    help="Optional alternative file to write config, or"
                    " - to write to stdout")
 
@@ -1503,6 +1501,15 @@ def safe_int(val, default=0):
 
 
 def api_cache(options):
+    """
+    Create a cache instance for the options object based on its
+    configuration.  If a cache was already created for this options
+    instance, return it instead of creating a new one.
+
+    As a side-effect, will create a directory in order to store the
+    persistent cache at the configured location.
+    """
+
     cache = getattr(options, "cache", None)
 
     if cache is None:
@@ -1561,7 +1568,7 @@ def subparser(parser, name, cli_func=None, help=None):
     # gather up a group of sub-commands, then we'll use this function
     # to print help information.
     if cli_func is None:
-        def cli_func(_):
+        def cli_func(_options):
             sp.print_usage(sys.stderr)
             return 1
 
@@ -1599,11 +1606,11 @@ def cli_argparser(argv=None):
 
     # the cli_func default is used when no subparser is triggered. In
     # this case, we just want it to print out the usage message
-    def cli_func(_):
+    def cli_usage_func(_options):
         parser.print_usage(sys.stderr)
         return 1
 
-    parser.set_defaults(cli_func=cli_func)
+    parser.set_defaults(cli_func=cli_usage_func)
 
     # this argument doesn't do anything, we just want it visible for
     # invocations of --help, any actual loading of the config put data
@@ -1656,12 +1663,14 @@ def main(argv=None):
     Primary CLI entry-point.
     """
 
-    argv = sys.argv if argv is None else argv
-
     # argparse does silly things. It treats argv[0] special ONLY when
-    # argv is not passed to parse_args explicitly. If passed
+    # argv is not passed to parse_args explicitly.  If passed
     # explicitly, then it will act as if argv[0] is the first option
-    # rather than the command name.
+    # rather than the command name.  We want main to take the full
+    # form of argv and to default to sys.argv otherwise, and we'll
+    # need to ensure that we will always use the explicit invocation
+    # of parse_args to make the behavior the same.
+    argv = sys.argv if argv is None else argv
 
     try:
         parser = cli_argparser(argv)
