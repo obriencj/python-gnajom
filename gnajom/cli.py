@@ -35,14 +35,16 @@ from appdirs import AppDirs
 from argparse import (
     ArgumentError, ArgumentParser, FileType,
     _AppendAction, _AppendConstAction, _StoreAction, _StoreConstAction, )
+from configparser import SafeConfigParser
 from datetime import datetime
 from getpass import getpass
 from json import dump, load, loads
 from os import chmod, makedirs
 from os.path import basename, exists, join, split
 from requests.exceptions import HTTPError
+from tarfile import TarFile, is_tarfile
+from tempfile import TemporaryFile
 from time import sleep
-from configparser import SafeConfigParser
 
 from . import APICache
 
@@ -91,12 +93,33 @@ DEFAULTS = {
 
 class SessionInvalid(Exception):
     """
-    raised by various api utility functions if they require a valid
-    auth and don't get one. caught in main to inform user they need to
-    connect
+    Raised by various api utility functions if they require a valid
+    auth and don't get one. Caught in `main()` to inform user they
+    need to connect
     """
 
     pass
+
+
+class CLIError(Exception):
+    """
+    Raised by various cli commands to indicate a problem occurred. The
+    expectation is that `main()` will catch this, print to stderr, and
+    exit with a return code of -1
+    """
+
+    pass
+
+
+def _err(*args):
+    """
+    Syntactic shortcut to raise a CLIError
+    """
+
+    # I wish I could (quickly and easily) tell python to raise in the
+    # parent calling context...
+
+    raise CLIError(" ".join(map(str, args)))
 
 
 def pretty(obj, out=sys.stdout):
@@ -185,8 +208,7 @@ def cli_command_auth_connect(options):
         return 0
 
     else:
-        print("Error: Bad username or password", file=sys.stderr)
-        return 1
+        _err("Error: Bad username or password")
 
 
 def cli_subparser_auth_connect(parent):
@@ -228,7 +250,7 @@ def cli_command_auth_validate(options):
         return 0
     else:
         print("Session is no longer valid")
-        return -1
+        return 1
 
 
 def cli_subparser_auth_validate(parent):
@@ -245,18 +267,15 @@ def cli_command_auth_refresh(options):
     auth = options.auth
 
     if not auth.accessToken:
-        print("No session data to refresh.",
-              "Try `gnajom auth connect` instead.",
-              file=sys.stderr)
-        return -1
+        _err("No session data to refresh. Try running"
+             " `gnajom auth connect` instead.")
 
     if options.force or not auth.validate():
         if auth.refresh():
             save_auth(options, auth)
             return 0
         else:
-            print("Could not refresh session.", file=sys.stderr)
-            return 1
+            _err("Could not refresh session.")
     else:
         # we weren't told to force refresh, and the session is still
         # valid, so we're happy with the way things are.
@@ -281,8 +300,8 @@ def cli_command_auth_invalidate(options):
     auth = options.auth
 
     if not auth.accessToken:
-        print("No session data")
-        return -1
+        _err("No session data")
+
     else:
         auth.invalidate()
         save_auth(options, auth)
@@ -415,8 +434,7 @@ def cli_command_auth_import(options):
         lpfn = join(mad.user_config_dir, "launcher_profiles.json")
 
         if not exists(lpfn):
-            print("No such file:", lpfn, file=sys.stderr)
-            return -1
+            _err("No such file:", lpfn)
 
         lpf = open(lpfn, "rt")
 
@@ -648,12 +666,12 @@ def cli_command_realm_knock(options):
 
     if options.json:
         pretty(data)
+
     elif "pending" in data:
         print("Server is coming online")
+
     else:
         print("Server is online at", data["address"])
-
-    return 0
 
 
 def cli_subparser_realm_knock(parent):
@@ -690,8 +708,7 @@ def cli_command_realm_legacyping(options):
         data = data["ip"]
 
     if not data:
-        print("Server is offline")
-        return -1
+        _err("Server is offline")
 
     addr, port = data.split(":")
     port = int(port)
@@ -727,24 +744,24 @@ def cli_command_realm_backups(options):
 
     if options.json:
         pretty(data)
+        return 0
 
-    else:
-        backups = data["backups"]
-        for back in sorted(backups, key=lambda b: b["lastModifiedDate"],
-                           reverse=True):
+    backups = data["backups"]
+    for back in sorted(backups, key=lambda b: b["lastModifiedDate"],
+                       reverse=True):
 
-            lmd = int(back["lastModifiedDate"]) // 1000
-            lmd = datetime.utcfromtimestamp(lmd)
-            back["lastModifiedDate"] = lmd
+        lmd = int(back["lastModifiedDate"]) // 1000
+        lmd = datetime.utcfromtimestamp(lmd)
+        back["lastModifiedDate"] = lmd
 
-            print(_REALM_BACKUP_FMT.format(**back))
-            if options.details:
-                details = back["metadata"]
-                print("  Name:", details["name"])
-                print("  Description:", details["description"])
-                print("  Difficulty:", details["game_difficulty"])
-                print("  Mode:", details["game_mode"])
-                print("  Type:", details["world_type"])
+        print(_REALM_BACKUP_FMT.format(**back))
+        if options.details:
+            details = back["metadata"]
+            print("  Name:", details["name"])
+            print("  Description:", details["description"])
+            print("  Difficulty:", details["game_difficulty"])
+            print("  Mode:", details["game_mode"])
+            print("  Type:", details["world_type"])
 
     return 0
 
@@ -769,12 +786,23 @@ def cli_command_realm_world_select(options):
     cli: gnajom realm world select
     """
 
-    print("NYI")
+    api = realms_api(options)
+
+    realm_id = options.realm_id
+    world = options.world_number
+
+    if not (0 < world < 4):
+        _err("Valid world slots are 1, 2, or 3")
+
+    return 0 if api.realm_select_world(realm_id, world) else 1
 
 
 def cli_subparser_realm_world_select(parent):
     p = subparser(parent, "select", cli_command_realm_world_select,
                   help="Select the active world on a realm")
+
+    p.add_argument("realm_id", action="store", type=int)
+    p.add_argument("world_number", action="store", type=int)
 
     return p
 
@@ -814,12 +842,75 @@ def cli_command_realm_world_upload(options):
     cli: gnajom realm world upload
     """
 
-    print("NYI")
+    api = realms_api(options)
+
+    realm_id = options.realm_id
+    world = options.world_number
+
+    # before we get too crazy, make sure the realm exists and we have
+    # access to take these actions by asking for a realm download link
+    url = api.realm_world_url(realm_id, world)
+    if not url:
+        _err("wut")
+
+    if options.world_file:
+        filename = options.world_file
+
+        if not exists(filename):
+            _err("No such file or directory:", filename)
+
+        # If world_file was specified, make sure it's actually a tarball
+        if not is_tarfile(filename):
+            _err("Invalid tar.gz:", filename)
+
+        # Then we can use the easy mode version of this API
+        return api.realm_world_upload_filename(realm_id, world,
+                                               options.world_file)
+
+    # Otherwise it's a bit more involved. We'll need to find the
+    # correct world directory, compress it into a tarball, upload it,
+    # and clean up after ourselves.
+
+    elif options.world_dir:
+        # specific path is preferred
+        worlddir = options.world_dir
+
+    elif options.world_name:
+        # figure out the real path via AppDirs
+        mad = AppDirs("minecraft")
+        worlddir = join(mad.user_config_dir, "saves", options.world_name)
+
+    else:
+        _err("One of --world-file, --world-dir, --world-name must be"
+             " specified")
+
+    # here we'll create a temporary file to write out the archive, and
+    # then use the already-open file to feed the upload API. When
+    # complete all should be cleaned up.
+    with TemporaryFile(suffix=".tar.gz") as tmpf:
+        with TarFile.open(mode="w|gz", fileobj=tmpf) as tarf:
+            tarf.add(worlddir, arcname="world", recursive=True)
+        tmpf.seek(0)
+        return api.realm_world_upload(realm_id, world, tmpf)
 
 
 def cli_subparser_realm_world_upload(parent):
     p = subparser(parent, "upload", cli_command_realm_world_upload,
                   help="Upload world data for a realm")
+
+    p.add_argument("realm_id", action="store", type=int)
+    p.add_argument("world_number", action="store", type=int)
+
+    g = p.add_mutually_exclusive_group()
+
+    g.add_argument("--world-file", action="store",
+                   help="gzip'd tar archive containing world save data")
+
+    g.add_argument("--world-dir", action="store",
+                   help="directory containing world save data")
+
+    g.add_argument("--world-name", action="store",
+                   help="name of a local Minecraft world")
 
     return p
 
@@ -835,12 +926,11 @@ def cli_command_realm_world_download(options):
     world = options.world_number
 
     if options.just_url:
-        url = api.realm_world_url(realm_id, options.world)
+        url = api.realm_world_url(realm_id, world)
 
         if not url:
-            print("Could not get download link for specified realm/world",
-                  file=sys.stderr)
-            return -1
+            _err("Could not get download link for specified realm/world")
+
         else:
             dl = url.get("downloadLink")
             print(dl)
@@ -851,8 +941,8 @@ def cli_command_realm_world_download(options):
         size = api.realm_world_download(realm_id, world, filename)
 
     except Exception as e:
-        print(e, file=sys.stderr)
-        return -1
+        # don't want a full backtrace, just convert it to a CLIError
+        _err(e)
 
     else:
         print("Saved world to %s (size: %i)" % (filename, size))
@@ -1761,6 +1851,10 @@ def main(argv=None):
         print("Current session invalid. Try running"
               " `gnajom auth connect --refresh`", file=sys.stderr)
         return 1
+
+    except CLIError as cli_err:
+        print(cli_err, file=sys.stderr)
+        return -1
 
     except HTTPError as http_err:
         resp = http_err.response

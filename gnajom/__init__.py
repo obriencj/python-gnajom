@@ -78,6 +78,32 @@ class APIHost(object):
         return resp.json() if len(resp.content) else None
 
 
+    def put(self, endpoint, payload=None):
+        """
+        Trigger an API endpoint on the host via an HTTP PUT. Any JSON
+        results will be parsed and returned.
+        """
+
+        assert(endpoint)
+
+        data = None
+        headers = self.headers
+
+        if payload is not None:
+            data = dumps(payload)
+            headers = headers.copy()
+            headers["Content-Type"] = "application/json"
+
+        resp = put(self._host + endpoint, data,
+                   cookies=self.cookies, headers=headers)
+
+        if self.debug_hook:
+            self.debug_hook(resp)
+        resp.raise_for_status()
+
+        return resp.json() if len(resp.content) else None
+
+
     def delete(self, endpoint):
         """
         Trigger an API endpoint on the host via an HTTP DELETE. Any JSON

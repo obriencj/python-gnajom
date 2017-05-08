@@ -21,7 +21,7 @@ gnajom.realms - Python module for working with Realms servers.
 """
 
 
-from . import GnajomAPI, usecache
+from . import GnajomAPI
 
 from requests import get, post
 
@@ -63,22 +63,18 @@ class RealmsAPI(GnajomAPI):
         self.api.cookies.set("version", version)
 
 
-    @usecache
     def mco_available(self):
         return self.api.get("/mco/available")
 
 
-    @usecache
     def mco_client_outdated(self):
         return self.api.get("/mco/client/outdated")
 
 
-    @usecache
     def mco_tos_agree(self):
         return self.api.post("/mco/tos/agreed")
 
 
-    @usecache
     def realm_list(self):
         """
         List the realms available for the given account auth
@@ -87,7 +83,6 @@ class RealmsAPI(GnajomAPI):
         return self.api.get("/worlds")
 
 
-    @usecache
     def realm_info(self, realm_id):
         """
         Information about a specific realm by ID
@@ -105,7 +100,6 @@ class RealmsAPI(GnajomAPI):
         return self.api.get("/worlds/%i/join" % realm_id)
 
 
-    @usecache
     def realm_backups(self, realm_id):
         """
         Show the backups available for the given realm ID
@@ -162,7 +156,8 @@ class RealmsAPI(GnajomAPI):
         port = info["port"]
         token = info["token"]
 
-        return self._endpoint_upload(host, port, token, world_gz_stream)
+        return self._endpoint_upload(realm_id, world, host, port,
+                                     token, world_gz_stream)
 
 
     def _endpoint_upload(self, realm_id, world,
@@ -170,14 +165,14 @@ class RealmsAPI(GnajomAPI):
 
         uri = "http://%s:%s/upload/%i/%i" % (host, port, realm_id, world)
 
-        cookies = dict(self.api.cookies)
+        cookies = self.api.cookies.copy()
         cookies["token"] = token
 
-        headers = dict(self.api.headers)
+        headers = self.api.headers.copy()
         headers["Content-Type"] = "application/octet-stream"
 
         resp = post(uri, data=iter(gz_stream),
-                    cookies=cookies, headers=self.headers)
+                    cookies=cookies, headers=headers)
 
         resp.raise_for_status()
 
@@ -202,7 +197,6 @@ class RealmsAPI(GnajomAPI):
         return total_size
 
 
-    @usecache
     def realm_world_url(self, realm_id, world):
         """
         Show the download URL for the latest world backup for the given
@@ -214,12 +208,10 @@ class RealmsAPI(GnajomAPI):
         return self.api.get(uri)
 
 
-    @usecache
     def realm_ops_list(self, realm_id):
         return self.api.get("/ops/%i" % realm_id)
 
 
-    @usecache
     def realm_subscription(self, realm_id):
         return self.api.get("/subscriptions/%i" % realm_id)
 
