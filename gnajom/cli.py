@@ -764,44 +764,103 @@ def cli_subparser_realm_backups(parent):
     return p
 
 
-def cli_command_realm_download(options):
+def cli_command_realm_world_select(options):
     """
-    cli: gnajom realm download
+    cli: gnajom realm world select
+    """
+
+    print("NYI")
+
+
+def cli_subparser_realm_world_select(parent):
+    p = subparser(parent, "select", cli_command_realm_world_select,
+                  help="Select the active world on a realm")
+
+    return p
+
+
+def cli_command_realm_world_delete(options):
+    """
+    cli: gnajom realm world delete
+    """
+
+    print("NYI")
+
+
+def cli_subparser_realm_world_delete(parent):
+    p = subparser(parent, "delete", cli_command_realm_world_delete,
+                  help="Delete a realm's world")
+
+    return p
+
+
+def cli_command_realm_world_init(options):
+    """
+    cli: gnajom realm world init
+    """
+
+    print("NYI")
+
+
+def cli_subparser_realm_world_init(parent):
+    p = subparser(parent, "init", cli_command_realm_world_init,
+                  help="Initialize an empty world for a realm")
+
+    return p
+
+
+def cli_command_realm_world_upload(options):
+    """
+    cli: gnajom realm world upload
+    """
+
+    print("NYI")
+
+
+def cli_subparser_realm_world_upload(parent):
+    p = subparser(parent, "upload", cli_command_realm_world_upload,
+                  help="Upload world data for a realm")
+
+    return p
+
+
+def cli_command_realm_world_download(options):
+    """
+    cli: gnajom realm world download
     """
 
     api = realms_api(options)
 
-    url = api.realm_world_url(options.realm_id, options.world_number)
-    dl = url.get("downloadLink")
-
-    if not url:
-        print("Could not get download link for specified realm/world")
-        return -1
+    realm_id = options.realm_id
+    world = options.world_number
 
     if options.just_url:
-        print(dl)
-        return 0
+        url = api.realm_world_url(realm_id, options.world)
 
-    filename = options.filename
-    total_size = 0
+        if not url:
+            print("Could not get download link for specified realm/world",
+                  file=sys.stderr)
+            return -1
+        else:
+            dl = url.get("downloadLink")
+            print(dl)
+            return 0
+
     try:
-        resp = requests.get(dl, stream=True)
-        with open(filename, "wb") as out:
-            for chunk in resp.iter_content(chunk_size=2**20):
-                out.write(chunk)
-                total_size += len(chunk)
+        filename = options.filename
+        size = api.realm_world_download(realm_id, world, filename)
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
         return -1
 
     else:
-        print("Saved world to %s (size: %i)" % (filename, total_size))
+        print("Saved world to %s (size: %i)" % (filename, size))
         return 0
 
 
-def cli_subparser_realm_download(parent):
-    p = subparser(parent, "download", cli_command_realm_download,
+def cli_subparser_realm_world_download(parent):
+    p = subparser(parent, "download", cli_command_realm_world_download,
                   help="Download world data from a realm")
 
     p.add_argument("realm_id", action="store", type=int)
@@ -813,7 +872,20 @@ def cli_subparser_realm_download(parent):
     return p
 
 
-def cli_subparser_realms(parent):
+def cli_subparser_realm_world(parent):
+    p = subparser(parent, "world",
+                  help="Commands relating to worlds in a realm")
+
+    cli_subparser_realm_world_select(p)
+    cli_subparser_realm_world_delete(p)
+    cli_subparser_realm_world_init(p)
+    cli_subparser_realm_world_upload(p)
+    cli_subparser_realm_world_download(p)
+
+    return p
+
+
+def cli_subparser_realm(parent):
     p = subparser(parent, "realm",
                   help="Commands related to Mojang's Minecraft Realms")
 
@@ -822,7 +894,7 @@ def cli_subparser_realms(parent):
     cli_subparser_realm_knock(p)
     cli_subparser_realm_legacyping(p)
     cli_subparser_realm_backups(p)
-    cli_subparser_realm_download(p)
+    cli_subparser_realm_world(p)
 
     return p
 
@@ -1628,7 +1700,7 @@ def cli_argparser(argv=None):
                         help="Print debugging information about cached calls")
 
     cli_subparser_auth(parser)
-    cli_subparser_realms(parser)
+    cli_subparser_realm(parser)
     cli_subparser_status(parser)
     cli_subparser_statistics(parser)
     cli_subparser_player(parser)
