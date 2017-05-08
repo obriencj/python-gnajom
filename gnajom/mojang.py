@@ -119,6 +119,7 @@ class MojangAPI(GnajomAPI):
 
 
     def upload_skin_filename(self, uuid, skin_filename, slim=False):
+        # TODO: figure out content-type instead of assuming image/png
         with open(skin_filename, "rb") as skin_stream:
             return self.upload_skin(self, uuid, skin_stream, slim,
                                     filename=skin_filename)
