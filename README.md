@@ -14,8 +14,8 @@ nightly downloads of the latest realm backup.
 [Minecraft Realms]: http://minecraft.net/realms
 
 The majority of the API information used in this library is straight
-from the excellent resource [wiki.vg](http://wiki.vg). The remainder was
-obtained via [mitmproxy](https://mitmproxy.org/).
+from the excellent resource at [wiki.vg](http://wiki.vg). The remainder was
+obtained via [mitmproxy](https://mitmproxy.org/) captures.
 
 
 ## Command-Line Interface
@@ -34,19 +34,21 @@ number of available calls in the various Mojang public APIs.
 |`gnajom auth show` |Print authentication information |
 |`gnajom auth import` |Import auth session from Minecraft launcher |
 |`gnajom realm list` |Print realms available to current user |
-|`gnajom realm info REALM_ID` |Print detailed information about a realm |
-|`gnajom realm knock REALM_ID` |Ensure a realm is running, print its address |
-|`gnajom realm backups REALM_ID` |List available backups for a realm |
-|`gnajom realm download REALM_ID WORLD_SLOT` |Download world data from a realm |
+|`gnajom realm info REALM` |Print detailed information about a realm |
+|`gnajom realm knock REALM` |Ensure a realm is running, print its address |
+|`gnajom realm backups REALM` |List available backups for a realm |
+|`gnajom realm world select REALM WORLD` |Set the active world on a realm |
+|`gnajom realm world download REALM WORLD` |Download world data from a realm |
+|`gnajom realm world upload REALM WORLD` |Upload world data for a realm |
 |`gnajom status` |Show the status of public Mojang services |
 |`gnajom statistics` |Show Mojang's sales statistics |
 |`gnajom player whoami` |Print information for the current auth account |
-|`gnajom player history PLAYER_NAME` |Profile name history for a player |
-|`gnajom player profile PLAYER_NAME` |Find a player's profile |
-|`gnajom profile lookup PLAYER_NAME ...` |Search for profile information |
-|`gnajom profile info PROFILE_ID` |Show information about a profile |
+|`gnajom player history PLAYER` |Profile name history for a player |
+|`gnajom player profile PLAYER` |Find a player's profile |
+|`gnajom profile lookup PLAYER ...` |Search for profile information |
+|`gnajom profile info PROFILE` |Show information about a profile |
 |`gnajom skin change URL` |Set profile skin to an existing skin URL |
-|`gnajom skin upload FILE_NAME` |Upload a file and set it as the profile skin |
+|`gnajom skin upload FILE` |Upload a file and set it as the profile skin |
 |`gnajom skin reset` |Reset a profile's skin to the default |
 |`gnajom skin download` |Download the skin for a profile |
 
@@ -55,9 +57,8 @@ Some parameter distinctions are necessary:
 * a USER is a mojang account, typically named by email address
 * a PLAYER is a minecraft account attached to the USER
 * a PROFILE is usually named after the PLAYER, and contains texture info
-
-In addition to names, all three have different IDs, and it can be
-tricky to distinguish which one you should use.
+* a REALM is specified by its numeric ID
+* a WORLD is specified by its slot number on a realm (1, 2, or 3)
 
 
 ## Requirements
