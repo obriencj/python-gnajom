@@ -23,6 +23,8 @@ gnajom.realms - Python module for working with Realms servers.
 
 from . import GnajomAPI, usecache
 
+from requests import get, post
+
 
 __all__ = (
     "RealmsAPI",
@@ -112,6 +114,94 @@ class RealmsAPI(GnajomAPI):
         return self.api.get("/worlds/%i/backups" % realm_id)
 
 
+    def realm_select_world(self, realm_id, world):
+        """
+        Sets the active world for the given realm ID
+        """
+
+        uri = "/worlds/%i/slot/%i" % (realm_id, world)
+
+        return self.api.put(uri)
+
+
+    def realm_upload_endpoint(self, realm_id):
+        """
+        Fetch the endpoint and token for uploading a world backup into a
+        realm
+        """
+
+        uri = "/worlds/%i/backups/upload" % realm_id
+
+        payload = {"token": "",
+                   "uploadEndpoint": "",
+                   "worldClosed": False}
+
+        return self.api.put(uri, payload)
+
+
+    def realm_world_upload_filename(self, realm_id, world,
+                                    world_gz_filename):
+
+        """
+        upload a minecraft world wrapped up in a tar.gz file to a world
+        on a given realm
+        """
+
+        with open(world_gz_filename, "rb") as gz:
+            return self.realm_world_upload(self, realm_id, world, gz)
+
+
+    def realm_world_upload(self, realm_id, world, world_gz_stream):
+        """
+        upload a minecraft world as a tar.gz stream to a world on a given
+        realm
+        """
+
+        info = self.realm_upload_endpoint(realm_id)
+        host = info["uploadEndpoint"]
+        port = info["port"]
+        token = info["token"]
+
+        return self._endpoint_upload(host, port, token, world_gz_stream)
+
+
+    def _endpoint_upload(self, realm_id, world,
+                         host, port, token, gz_stream):
+
+        uri = "http://%s:%s/upload/%i/%i" % (host, port, realm_id, world)
+
+        cookies = dict(self.api.cookies)
+        cookies["token"] = token
+
+        headers = dict(self.api.headers)
+        headers["Content-Type"] = "application/octet-stream"
+
+        resp = post(uri, data=iter(gz_stream),
+                    cookies=cookies, headers=self.headers)
+
+        resp.raise_for_status()
+
+        return resp.json() if len(resp.content) else None
+
+
+    def realm_world_download(self, realm_id, world, filename):
+
+        url = self.realm_world_url(realm_id, world)
+        dl = url.get("downloadLink")
+
+        if not url:
+            return None
+
+        total_size = 0
+        resp = get(dl, stream=True)
+        with open(filename, "wb") as out:
+            for chunk in resp.iter_content(chunk_size=2**20):
+                out.write(chunk)
+                total_size += len(chunk)
+
+        return total_size
+
+
     @usecache
     def realm_world_url(self, realm_id, world):
         """
@@ -119,7 +209,9 @@ class RealmsAPI(GnajomAPI):
         realm ID
         """
 
-        return self.api.get("/worlds/%i/slot/%i/download" % (realm_id, world))
+        uri = "/worlds/%i/slot/%i/download" % (realm_id, world)
+
+        return self.api.get(uri)
 
 
     @usecache
