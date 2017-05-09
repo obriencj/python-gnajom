@@ -36,9 +36,10 @@ number of available calls in the various Mojang public APIs.
 |`gnajom realm list` |Print realms available to current user |
 |`gnajom realm info REALM` |Print detailed information about a realm |
 |`gnajom realm knock REALM` |Ensure a realm is running, print its address |
-|`gnajom realm backups REALM` |List available backups for a realm |
+|`gnajom realm world backups REALM` |List backups for a realm's active world |
+|`gnajom realm world download REALM` |Download a realm's active world |
+|`gnajom realm world reset REALM` |Reset a realm's active world |
 |`gnajom realm world select REALM WORLD` |Set the active world on a realm |
-|`gnajom realm world download REALM WORLD` |Download world data from a realm |
 |`gnajom realm world upload REALM WORLD` |Upload world data for a realm |
 |`gnajom status` |Show the status of public Mojang services |
 |`gnajom statistics` |Show Mojang's sales statistics |

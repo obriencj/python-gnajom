@@ -464,7 +464,7 @@ def cli_command_auth_import(options):
     # is a real pain in the ass.
     nsf = options.new_session_file
     if nsf is None:
-        save_auth(auth, options)
+        save_auth(options, auth)
     else:
         with nsf:
             auth.write(nsf)
@@ -734,9 +734,9 @@ def cli_subparser_realm_legacyping(parent):
 _REALM_BACKUP_FMT = "[id: {backupId}] {lastModifiedDate}, {size} bytes"
 
 
-def cli_command_realm_backups(options):
+def cli_command_realm_world_backups(options):
     """
-    cli: gnajom realm backups
+    cli: gnajom realm world backups
     """
 
     api = realms_api(options)
@@ -751,7 +751,7 @@ def cli_command_realm_backups(options):
                        reverse=True):
 
         lmd = int(back["lastModifiedDate"]) // 1000
-        lmd = datetime.utcfromtimestamp(lmd)
+        lmd = datetime.fromtimestamp(lmd)
         back["lastModifiedDate"] = lmd
 
         print(_REALM_BACKUP_FMT.format(**back))
@@ -766,9 +766,9 @@ def cli_command_realm_backups(options):
     return 0
 
 
-def cli_subparser_realm_backups(parent):
-    p = subparser(parent, "backups", cli_command_realm_backups,
-                  help="List available backups for a realm")
+def cli_subparser_realm_world_backups(parent):
+    p = subparser(parent, "backups", cli_command_realm_world_backups,
+                  help="List backups for the current world of a realm")
 
     p.add_argument("realm_id", action="store", type=int,
                    help="ID of realm to which this account has admin access")
@@ -807,32 +807,87 @@ def cli_subparser_realm_world_select(parent):
     return p
 
 
-def cli_command_realm_world_delete(options):
+# def cli_command_realm_world_delete(options):
+#     """
+#     cli: gnajom realm world delete
+#     """
+
+#     api = realms_api(options)
+
+#     realm_id = options.realm_id
+#     world = options.world_number
+
+#     if not (0 < world < 4):
+#         _err("Valid world slots are 1, 2, or 3")
+
+#     result = api.realm_world_delete(realm_id, world)
+#     pretty(result)
+
+
+# def cli_subparser_realm_world_delete(parent):
+#     p = subparser(parent, "delete", cli_command_realm_world_delete,
+#                   help="Delete a realm's world")
+
+#     p.add_argument("realm_id", action="store", type=int)
+#     p.add_argument("world_number", action="store", type=int)
+
+#     return p
+
+
+def cli_command_realm_world_reset(options):
     """
-    cli: gnajom realm world delete
+    cli: gnajom realm world reset
     """
 
-    print("NYI")
+    api = realms_api(options)
+
+    result = api.realm_reset(options.realm_id,
+                             structures=options.structures,
+                             level=options.level_type,
+                             seed=options.seed,
+                             template=options.template)
+
+    pretty(result)
 
 
-def cli_subparser_realm_world_delete(parent):
-    p = subparser(parent, "delete", cli_command_realm_world_delete,
-                  help="Delete a realm's world")
+def cli_subparser_realm_world_reset(parent):
+    p = subparser(parent, "reset", cli_command_realm_world_reset,
+                  help="Reset the active world on a realm")
 
-    return p
+    p.add_argument("realm_id", action="store", type=int)
 
+    p.add_argument("--seed", action="store", default="",
+                   help="Seed for world generation")
 
-def cli_command_realm_world_init(options):
-    """
-    cli: gnajom realm world init
-    """
+    p.add_argument("--template", action="store", type=int,
+                   default=-1,
+                   help="Use the specified template ID")
 
-    print("NYI")
+    p.add_argument("--no-structures", dest="structures",
+                   action="store_false", default=True,
+                   help="Disable structures")
 
+    g = p.add_mutually_exclusive_group()
 
-def cli_subparser_realm_world_init(parent):
-    p = subparser(parent, "init", cli_command_realm_world_init,
-                  help="Initialize an empty world for a realm")
+    g.add_argument("--type", action="store", type=int,
+                   dest="level_type", default=0,
+                   help="Set the world's level type")
+
+    g.add_argument("--normal", action="store_const",
+                   dest="level_type", const=0,
+                   help="Set the type to normal (0)")
+
+    g.add_argument("--flat", action="store_const",
+                   dest="level_type", const=1,
+                   help="Set the type to flat (1)")
+
+    g.add_argument("--large-biomes", action="store_const",
+                   dest="level_type", const=2,
+                   help="Set the type to large biomes (2)")
+
+    g.add_argument("--amplified", action="store_const",
+                   dest="level_type", const=3,
+                   help="Set the type to amplified (3)")
 
     return p
 
@@ -954,7 +1009,9 @@ def cli_subparser_realm_world_download(parent):
                   help="Download world data from a realm")
 
     p.add_argument("realm_id", action="store", type=int)
-    p.add_argument("world_number", action="store", type=int)
+    p.add_argument("world_number", nargs="?", action="store", type=int,
+                   default=1)
+
     p.add_argument("--just-url", action="store_true", default=False,
                    help="print the URL rather than actually downloading")
     p.add_argument("--filename", action="store", default="mc_world.tar.gz")
@@ -966,9 +1023,11 @@ def cli_subparser_realm_world(parent):
     p = subparser(parent, "world",
                   help="Commands relating to worlds in a realm")
 
+    cli_subparser_realm_world_backups(p)
+    # cli_subparser_realm_world_rollback(p)
     cli_subparser_realm_world_select(p)
-    cli_subparser_realm_world_delete(p)
-    cli_subparser_realm_world_init(p)
+    # cli_subparser_realm_world_delete(p)
+    cli_subparser_realm_world_reset(p)
     cli_subparser_realm_world_upload(p)
     cli_subparser_realm_world_download(p)
 
@@ -983,7 +1042,6 @@ def cli_subparser_realm(parent):
     cli_subparser_realm_info(p)
     cli_subparser_realm_knock(p)
     cli_subparser_realm_legacyping(p)
-    cli_subparser_realm_backups(p)
     cli_subparser_realm_world(p)
 
     return p
@@ -1047,7 +1105,7 @@ def cli_command_player_whoami(options):
         for key in _WHOAMI_DATE_FIELDS:
             if key in info:
                 val = info[key] // 1000
-                info[key] = datetime.utcfromtimestamp(val)
+                info[key] = datetime.fromtimestamp(val)
 
         print("Authenticated:")
         for k, v in sorted(info.items()):
@@ -1082,7 +1140,7 @@ def cli_command_player_history(options):
             if not when:
                 print("created as", name)
             else:
-                whenat = datetime.utcfromtimestamp(when // 1000)
+                whenat = datetime.fromtimestamp(when // 1000)
                 print("changed to %s at %s" % (name, whenat))
 
     return 0

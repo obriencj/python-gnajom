@@ -108,7 +108,7 @@ class RealmsAPI(GnajomAPI):
         return self.api.get("/worlds/%i/backups" % realm_id)
 
 
-    def realm_select_world(self, realm_id, world):
+    def realm_world_select(self, realm_id, world):
         """
         Sets the active world for the given realm ID
         """
@@ -116,6 +116,16 @@ class RealmsAPI(GnajomAPI):
         uri = "/worlds/%i/slot/%i" % (realm_id, world)
 
         return self.api.put(uri)
+
+
+    # def realm_world_delete(self, realm_id, world):
+    #     """
+    #     Clear the world data for the given realm ID
+    #     """
+
+    #     uri = "/worlds/%i/slot/%i" % (realm_id, world)
+
+    #     return self.api.delete(uri)
 
 
     def realm_upload_endpoint(self, realm_id):
@@ -206,6 +216,19 @@ class RealmsAPI(GnajomAPI):
         uri = "/worlds/%i/slot/%i/download" % (realm_id, world)
 
         return self.api.get(uri)
+
+
+    def realm_reset(self, realm_id,
+                    structures=True, level=0, seed="", template=-1):
+
+        uri = "/worlds/%i/reset" % realm_id
+
+        payload = {"generateStructures": structures,
+                   "levelType": level,
+                   "seed": seed or "",
+                   "worldTemplateId": template}
+
+        return self.api.post(uri, payload)
 
 
     def realm_ops_list(self, realm_id):
