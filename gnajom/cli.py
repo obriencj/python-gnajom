@@ -794,7 +794,7 @@ def cli_command_realm_world_select(options):
     if not (0 < world < 4):
         _err("Valid world slots are 1, 2, or 3")
 
-    return 0 if api.realm_select_world(realm_id, world) else 1
+    return 0 if api.realm_world_select(realm_id, world) else 1
 
 
 def cli_subparser_realm_world_select(parent):
