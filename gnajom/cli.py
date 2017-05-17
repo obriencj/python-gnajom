@@ -794,7 +794,10 @@ def cli_command_realm_world_select(options):
     if not (0 < world < 4):
         _err("Valid world slots are 1, 2, or 3")
 
-    return 0 if api.realm_world_select(realm_id, world) else 1
+    resp = api.realm_world_select(realm_id, world)
+    pretty(resp)
+
+    return 0 if resp else 1
 
 
 def cli_subparser_realm_world_select(parent):
@@ -807,31 +810,31 @@ def cli_subparser_realm_world_select(parent):
     return p
 
 
-# def cli_command_realm_world_delete(options):
-#     """
-#     cli: gnajom realm world delete
-#     """
+def cli_command_realm_world_config(options):
+    """
+    cli: gnajom realm world config
+    """
 
-#     api = realms_api(options)
+    api = realms_api(options)
 
-#     realm_id = options.realm_id
-#     world = options.world_number
+    realm_id = options.realm_id
+    world = options.world_number
 
-#     if not (0 < world < 4):
-#         _err("Valid world slots are 1, 2, or 3")
+    if not (0 < world < 4):
+        _err("Valid world slots are 1, 2, or 3")
 
-#     result = api.realm_world_delete(realm_id, world)
-#     pretty(result)
+    result = api.realm_world_info(realm_id, world)
+    pretty(result)
 
 
-# def cli_subparser_realm_world_delete(parent):
-#     p = subparser(parent, "delete", cli_command_realm_world_delete,
-#                   help="Delete a realm's world")
+def cli_subparser_realm_world_config(parent):
+    p = subparser(parent, "config", cli_command_realm_world_config,
+                  help="Show config for a realm's world")
 
-#     p.add_argument("realm_id", action="store", type=int)
-#     p.add_argument("world_number", action="store", type=int)
+    p.add_argument("realm_id", action="store", type=int)
+    p.add_argument("world_number", action="store", type=int)
 
-#     return p
+    return p
 
 
 def cli_command_realm_world_reset(options):
@@ -1026,7 +1029,7 @@ def cli_subparser_realm_world(parent):
     cli_subparser_realm_world_backups(p)
     # cli_subparser_realm_world_rollback(p)
     cli_subparser_realm_world_select(p)
-    # cli_subparser_realm_world_delete(p)
+    # cli_subparser_realm_world_config(p)
     cli_subparser_realm_world_reset(p)
     cli_subparser_realm_world_upload(p)
     cli_subparser_realm_world_download(p)

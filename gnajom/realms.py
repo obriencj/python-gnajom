@@ -118,16 +118,6 @@ class RealmsAPI(GnajomAPI):
         return self.api.put(uri)
 
 
-    # def realm_world_delete(self, realm_id, world):
-    #     """
-    #     Clear the world data for the given realm ID
-    #     """
-
-    #     uri = "/worlds/%i/slot/%i" % (realm_id, world)
-
-    #     return self.api.delete(uri)
-
-
     def realm_upload_endpoint(self, realm_id):
         """
         Fetch the endpoint and token for uploading a world backup into a
@@ -210,7 +200,10 @@ class RealmsAPI(GnajomAPI):
     def realm_world_url(self, realm_id, world):
         """
         Show the download URL for the latest world backup for the given
-        realm ID
+        realm ID.
+
+        NOTE: seems to currently be bugged -- no matter what world you
+        specify, it always downloads the currently active world.
         """
 
         uri = "/worlds/%i/slot/%i/download" % (realm_id, world)
