@@ -50,14 +50,14 @@ from . import APICache
 
 from .auth import Authentication, DEFAULT_AUTH_HOST, GNAJOM_CLIENT_TOKEN
 
-from .realms import RealmsAPI, DEFAULT_REALMS_HOST, DEFAULT_REALMS_VERSION
+from .realms import (
+    RealmsAPI, WorldLevel,
+    DEFAULT_REALMS_HOST, DEFAULT_REALMS_VERSION, )
 
 from .mojang import (
     MojangAPI, SessionAPI, StatusAPI,
     DEFAULT_MOJANG_API_HOST, DEFAULT_MOJANG_SESSION_HOST,
-    DEFAULT_MOJANG_STATUS_HOST,
-    STATISTIC_MINECRAFT_SOLD, STATISTIC_PREPAID_MINECRAFT_REDEEMED,
-    STATISTIC_COBALT_SOLD, STATISTIC_SCROLLS_SOLD, )
+    DEFAULT_MOJANG_STATUS_HOST, MojangStatistic, )
 
 from .slp import legacy_slp
 
@@ -873,23 +873,23 @@ def cli_subparser_realm_world_reset(parent):
     g = p.add_mutually_exclusive_group()
 
     g.add_argument("--type", action="store", type=int,
-                   dest="level_type", default=0,
+                   dest="level_type", default=WorldLevel.NORMAL,
                    help="Set the world's level type")
 
     g.add_argument("--normal", action="store_const",
-                   dest="level_type", const=0,
+                   dest="level_type", const=WorldLevel.NORMAL,
                    help="Set the type to normal (0)")
 
     g.add_argument("--flat", action="store_const",
-                   dest="level_type", const=1,
+                   dest="level_type", const=WorldLevel.FLAT,
                    help="Set the type to flat (1)")
 
     g.add_argument("--large-biomes", action="store_const",
-                   dest="level_type", const=2,
+                   dest="level_type", const=WorldLevel.LARGEBIOMES,
                    help="Set the type to large biomes (2)")
 
     g.add_argument("--amplified", action="store_const",
-                   dest="level_type", const=3,
+                   dest="level_type", const=WorldLevel.AMPLIFIED,
                    help="Set the type to amplified (3)")
 
     return p
@@ -920,6 +920,11 @@ def cli_command_realm_world_upload(options):
         # If world_file was specified, make sure it's actually a tarball
         if not is_tarfile(filename):
             _err("Invalid tar.gz:", filename)
+
+        # TODO: realms also requires that the directory name inside
+        # the tarball is named "world". Many instances of world data
+        # use the world's name as the directory name, eg. "Testing
+        # World"
 
         # Then we can use the easy mode version of this API
         return api.realm_world_upload_filename(realm_id, world,
@@ -1161,36 +1166,6 @@ def cli_subparser_player_history(parent):
                    help="user specified by name instead of UUID")
 
     return p
-
-
-def _fmt(fmt):
-    return lambda d: datetime.strptime(d, fmt)
-
-
-_DATE_FORMATS = (
-    (re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}"), _fmt("%Y-%m-%dT%H:%M")),
-    (re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}"), _fmt("%Y-%m-%d %H:%M")),
-    (re.compile(r"\d{4}-\d{2}-\d{2}"), _fmt("%Y-%m-%d")),
-    (re.compile(r"\d{4}-\d{2}"), _fmt("%Y-%m")),
-    (re.compile(r"\d+"), lambda d: datetime.fromtimestamp(int(d))),
-)
-
-
-def datetime_arg(sdate):
-    for rc, fmt in _DATE_FORMATS:
-        mtch = rc.match(sdate)
-        if mtch:
-            try:
-                return fmt(mtch.string)
-            except ValueError as ve:
-                raise ArgumentError(str(ve))
-    else:
-        raise ArgumentError("Invalid date-time format, %r" % sdate)
-
-
-# we setting the __name__ because that's how argparse will complain
-# about the type if an ArgumentError is raised
-datetime_arg.__name__ = "date-time"
 
 
 def cli_command_player_profile(options):
@@ -1446,19 +1421,19 @@ def cli_subparser_statistics(parent):
     optional_json(p)
 
     p.add_argument("--minecraft", action="append_const", dest="stats",
-                   const=STATISTIC_MINECRAFT_SOLD,
+                   const=MojangStatistic.MINECRAFT_SOLD,
                    help="Minecraft copies sold")
 
     p.add_argument("--minecraft-prepaid", action="append_const", dest="stats",
-                   const=STATISTIC_PREPAID_MINECRAFT_REDEEMED,
+                   const=MojangStatistic.PREPAID_MINECRAFT_REDEEMED,
                    help="Minecraft prepaid cards redeemed")
 
     p.add_argument("--cobalt", action="append_const", dest="stats",
-                   const=STATISTIC_COBALT_SOLD,
+                   const=MojangStatistic.COBALT_SOLD,
                    help="Cobalt copies sold")
 
     p.add_argument("--scrolls", action="append_const", dest="stats",
-                   const=STATISTIC_SCROLLS_SOLD,
+                   const=MojangStatistic.SCROLLS_SOLD,
                    help="Scrolls copies sold")
 
     p.add_argument("--other", action="append", dest="stats",
@@ -1708,21 +1683,6 @@ def cli_subparser_config(parent):
 # --- CLI setup and entry point ---
 
 
-def _cli_api_debug_hook(response):
-    from_cache = getattr(response, "from_cache", None)
-    msg = "cached: %r, response: %r" % (from_cache, response)
-    print(msg, file=sys.stderr)
-    return response
-
-
-def safe_int(val, default=0):
-    try:
-        val = int(val)
-    except ValueError:
-        val = default
-    return val
-
-
 def api_cache(options):
     """
     Create a cache instance for the options object based on its
@@ -1748,6 +1708,21 @@ def api_cache(options):
         options.cache = cache
 
     return cache
+
+
+def _cli_api_debug_hook(response):
+    from_cache = getattr(response, "from_cache", None)
+    msg = "cached: %r, response: %r" % (from_cache, response)
+    print(msg, file=sys.stderr)
+    return response
+
+
+def safe_int(val, default=0):
+    try:
+        val = int(val)
+    except ValueError:
+        val = default
+    return val
 
 
 def optional_json(parser):
@@ -1800,6 +1775,55 @@ def subparser(parser, name, cli_func=None, help=None):
     sp.set_defaults(cli_func=cli_func)
 
     return sp
+
+
+def __datetime_arg():
+    """
+    creates a function that can be used as a date-time format handler
+    in argparse.
+    """
+
+    # this is a pairing of regexes and a strptime wrapper to parse a
+    # date matching it
+    date_formats = (
+        (re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}"),
+         lambda d: datetime.strptime(d, "%Y-%m-%dT%H:%M")),
+        (re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}"),
+         lambda d: datetime.strptime(d, "%Y-%m-%d %H:%M")),
+        (re.compile(r"\d{4}-\d{2}-\d{2}"),
+         lambda d: datetime.strptime(d, "%Y-%m-%d")),
+        (re.compile(r"\d{4}-\d{2}"),
+         lambda d: datetime.strptime(d, "%Y-%m")),
+        (re.compile(r"\d+"),
+         lambda d: datetime.fromtimestamp(int(d))),
+        (re.compile("now"),
+         lambda d: datetime.now()),
+    )
+
+    def datetime_arg(sdate):
+        """
+        argparse argument handler for parsing ISO-8601 date (and
+        optionally time) formats.
+        """
+
+        for pattern, parser in date_formats:
+            mtch = pattern.match(sdate)
+            if mtch:
+                try:
+                    return parser(mtch.string)
+                except ValueError as ve:
+                    raise ArgumentError(str(ve))
+        else:
+            raise ArgumentError("Invalid date-time format, %r" % sdate)
+
+    # we setting the __name__ because that's how argparse will complain
+    # about the type if an ArgumentError is raised
+    datetime_arg.__name__ = "date-time"
+    return datetime_arg
+
+
+# this is the actual handler function
+datetime_arg = __datetime_arg()
 
 
 def cli_argparser(argv=None):
