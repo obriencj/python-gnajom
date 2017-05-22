@@ -27,6 +27,7 @@ import zlib
 
 from abc import ABCMeta, abstractmethod
 from collections import deque
+from enum import Enum
 from io import StringIO
 from functools import update_wrapper
 from singledispatch import singledispatch
@@ -184,29 +185,20 @@ def dispatch(func):
 # --- Session State Definitions ---
 
 
-STATE_CLOSED = -2
-STATE_CONNECTED = -1
-STATE_HANDSHAKING = 0
-STATE_STATUS = 1
-STATE_LOGIN = 2
-STATE_PLAY = 3
-
-SESSION_STATES = {
-    STATE_CLOSED: "Closed",
-    STATE_CONNECTED: "Connected",
-    STATE_HANDSHAKING: "Handshaking",
-    STATE_STATUS: "Status",
-    STATE_LOGIN: "Login",
-    STATE_PLAY: "Play"
-}
+class SessionState(Enum):
+    CLOSED = -2
+    CONNECTED = -1
+    HANDSHAKING = 0
+    STATUS = 1
+    LOGIN = 2
+    PLAY = 3
 
 
 class ClientStateException(Exception):
     def __init__(self, expected_state, actual_state):
         self.expected_state = expected_state
         self.actual_state = actual_state
-        super(ClientStateException, self).__init__(self, expected_state,
-                                                   actual_state)
+        super().__init__(self, expected_state, actual_state)
 
 
 # --- Protocol Packets ---
@@ -281,7 +273,7 @@ class Handshake(ServerboundPacket):
     http://wiki.vg/Protocol#Handshaking
     """
 
-    PACKET_STATE = STATE_HANDSHAKING
+    PACKET_STATE = SessionState.HANDSHAKING
     PACKET_ID = 0x00
     PACKET_NAME = "Handshake"
 
@@ -304,25 +296,25 @@ class Handshake(ServerboundPacket):
 
 
 class Request(ServerboundPacket):
-    PACKET_STATE = STATE_STATUS
+    PACKET_STATE = SessionState.STATUS
     PACKET_ID = 0x00
     PACKET_NAME = "Request"
 
 
 class Ping(ServerboundPacket):
-    PACKET_STATE = STATE_STATUS
+    PACKET_STATE = SessionState.STATUS
     PACKET_ID = 0x01
     PACKET_NAME = "Ping"
 
 
 class LoginStart(ServerboundPacket):
-    PACKET_STATE = STATE_LOGIN
+    PACKET_STATE = SessionState.LOGIN
     PACKET_ID = 0x00
     PACKET_NAME = "Login Start"
 
 
 class EncruptionResponse(ServerboundPacket):
-    PACKET_STATE = STATE_LOGIN
+    PACKET_STATE = SessionState.LOGIN
     PACKET_ID = 0x01
     PACKET_NAME = "Encruption Request"
 
@@ -331,19 +323,19 @@ class EncruptionResponse(ServerboundPacket):
 
 
 class Response(ClientboundPacket):
-    PACKET_STATE = STATE_STATUS
+    PACKET_STATE = SessionState.STATUS
     PACKET_ID = 0x00
     PACKET_NAME = "Response"
 
 
 class Pong(ClientboundPacket):
-    PACKET_STATE = STATE_STATUS
+    PACKET_STATE = SessionState.STATUS
     PACKET_ID = 0x01
     PACKET_NAME = "Pong"
 
 
 class Disconnect(ClientboundPacket):
-    PACKET_STATE = STATE_LOGIN
+    PACKET_STATE = SessionState.LOGIN
     PACKET_ID = 0x00
     PACKET_NAME = "Disconnect"
 
@@ -352,7 +344,7 @@ class Disconnect(ClientboundPacket):
 
 
 class EncryptionRequest(ClientboundPacket):
-    PACKET_STATE = STATE_LOGIN
+    PACKET_STATE = SessionState.LOGIN
     PACKET_ID = 0x01
     PACKET_NAME = "Encryption Request"
 
@@ -361,7 +353,7 @@ class EncryptionRequest(ClientboundPacket):
 
 
 class LoginSuccess(ClientboundPacket):
-    PACKET_STATE = STATE_LOGIN
+    PACKET_STATE = SessionState.LOGIN
     PACKET_ID = 0x02
     PACKET_NAME = "Login Success"
 
@@ -370,7 +362,7 @@ class LoginSuccess(ClientboundPacket):
 
 
 class SetCompression(ClientboundPacket):
-    PACKET_STATE = STATE_LOGIN
+    PACKET_STATE = SessionState.LOGIN
     PACKET_ID = 0x03
     PACKET_NAME = "Set Compression"
 
@@ -386,7 +378,7 @@ class ClientSession(object):
 
     def __init__(self):
         self.dispatcher = None
-        self.state = STATE_CLOSED
+        self.state = SessionState.CLOSED
         self.compression = False
         self.socket = None
         self.socketin = None
@@ -406,8 +398,8 @@ class ClientSession(object):
 
 
     def connect(self, host, port):
-        if self.state != STATE_CLOSED:
-            raise ClientStateException(STATE_CLOSED, self.state)
+        if self.state != SessionState.CLOSED:
+            raise ClientStateException(SessionState.CLOSED, self.state)
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((host, port))
@@ -415,14 +407,14 @@ class ClientSession(object):
         self.socket_in = sock.makefile("r+b")
         self.socket_out = sock.makefile("w+b")
 
-        self.state = STATE_CONNECTED
+        self.state = SessionState.CONNECTED
 
 
     def disconnect(self):
         if self.socket:
             self.socket.disconnect()
 
-        self.state = STATE_CLOSED
+        self.state = SessionState.CLOSED
         self.compression = False
         self.socket = None
         self.socket_in = None
@@ -506,7 +498,7 @@ class Dispatcher(object):
 class LoginDispatcher(Dispatcher):
 
 
-    def __init__(self, session, goal_state=STATE_STATUS):
+    def __init__(self, session, goal_state=SessionState.STATUS):
         self.session = session
         self.goal = goal_state
 
