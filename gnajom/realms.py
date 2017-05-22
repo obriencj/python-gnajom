@@ -23,11 +23,12 @@ gnajom.realms - Python module for working with Realms servers.
 
 from . import GnajomAPI
 
+from enum import Enum
 from requests import get, post
 
 
 __all__ = (
-    "RealmsAPI",
+    "RealmsAPI", "WorldLevel",
     "HOST_DESKTOP_REALMS", "HOST_PE_REALMS",
     "DEFAULT_REALMS_HOST", "DEFAULT_REALMS_VERSION", )
 
@@ -37,6 +38,13 @@ HOST_PE_REALMS = "https://peoapi.minecraft.net"
 
 DEFAULT_REALMS_HOST = HOST_DESKTOP_REALMS
 DEFAULT_REALMS_VERSION = "1.10.2"
+
+
+class WorldLevel(Enum):
+    NORMAL = 0
+    FLAT = 1
+    LARGEBIOMES = 2
+    AMPLIFIED = 3
 
 
 class RealmsAPI(GnajomAPI):
