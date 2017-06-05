@@ -164,7 +164,7 @@ def cli_command_auth_connect(options):
 
     auth = options.auth
 
-    if options.refresh and auth.accessToken:
+    if options.refresh and auth.access_token:
         # user requested we try to reuse the existing session if
         # possible.
 
@@ -181,7 +181,7 @@ def cli_command_auth_connect(options):
 
         else:
             # then this token is trash, throw it out
-            auth.accessToken = None
+            auth.access_token = None
 
     username = (options.username or auth.username or
                 input("username: "))
@@ -191,16 +191,16 @@ def cli_command_auth_connect(options):
     if options.request_client_token:
         # we have explicitly been told to have the server give us
         # a token, even if we had one saved.
-        auth.clientToken = None
+        auth.client_token = None
 
     elif options.random_client_token:
         # we have explicitly been told to generate a new random client
         # token
-        auth.clientToken = None
-        auth.ensureClientToken()
+        auth.client_token = None
+        auth.ensure_client_token()
 
     else:
-        auth.clientToken = options.client_token or GNAJOM_CLIENT_TOKEN
+        auth.client_token = options.client_token or GNAJOM_CLIENT_TOKEN
 
     auth.username = username
     if auth.authenticate(password):
@@ -266,7 +266,7 @@ def cli_command_auth_refresh(options):
 
     auth = options.auth
 
-    if not auth.accessToken:
+    if not auth.access_token:
         _err("No session data to refresh. Try running"
              " `gnajom auth connect` instead.")
 
@@ -299,7 +299,7 @@ def cli_command_auth_invalidate(options):
 
     auth = options.auth
 
-    if not auth.accessToken:
+    if not auth.access_token:
         _err("No session data")
 
     else:
@@ -385,11 +385,11 @@ def cli_command_auth_show(options):
         print("  auth_host:", auth.api._host)
         print("  username:", auth.username)
         print("  id:", auth.user["id"])
-        print("  clientToken:", auth.clientToken)
-        print("  accessToken:", hide(auth.accessToken))
+        print("  clientToken:", auth.client_token)
+        print("  accessToken:", hide(auth.access_token))
         print("  selectedProfile:")
-        print("    name:", auth.selectedProfile["name"])
-        print("    id:", auth.selectedProfile["id"])
+        print("    name:", auth.selected_profile["name"])
+        print("    id:", auth.selected_profile["id"])
         print("  agent:")
         print("    name:", auth.agent["name"])
         print("    version:", auth.agent["version"])
@@ -443,22 +443,22 @@ def cli_command_auth_import(options):
 
     # this is a convoluted disaster to translate between the two
     # formats, but it works!
-    clientToken = profiles["clientToken"]
+    client_token = profiles["clientToken"]
     selected_user = profiles["selectedUser"]["account"]
     selected_profile = profiles["selectedUser"]["profile"]
     adb = profiles["authenticationDatabase"][selected_user]
     username = adb["username"]
-    accessToken = adb["accessToken"]
+    access_token = adb["accessToken"]
     adbp = adb["profiles"][selected_profile]
     profilename = adbp["displayName"]
 
     auth = options.auth
     auth.username = username
-    auth.accessToken = accessToken
-    auth.clientToken = clientToken
+    auth.access_token = access_token
+    auth.client_token = client_token
     auth.user["id"] = selected_user
-    auth.selectedProfile["id"] = selected_profile
-    auth.selectedProfile["name"] = profilename
+    auth.selected_profile["id"] = selected_profile
+    auth.selected_profile["name"] = profilename
 
     # mixing string filenames with the argparse FileType arguments
     # is a real pain in the ass.
@@ -1777,7 +1777,7 @@ def subparser(parser, name, cli_func=None, help=None):
     return sp
 
 
-def __datetime_arg():
+def _datetime_arg():
     """
     creates a function that can be used as a date-time format handler
     in argparse.
@@ -1823,7 +1823,7 @@ def __datetime_arg():
 
 
 # this is the actual handler function
-datetime_arg = __datetime_arg()
+datetime_arg = _datetime_arg()
 
 
 def cli_argparser(argv=None):

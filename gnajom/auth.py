@@ -25,7 +25,7 @@ from . import APIHost
 
 
 __all__ = (
-    "Authentication", "auth_from_file", "generate_clientToken",
+    "Authentication", "auth_from_file", "generate_client_token",
     "HOST_YGGDRASIL", "DEFAULT_AUTH_HOST", "MINECRAFT_AGENT_V1",
     "GNAJOM_CLIENT_TOKEN", )
 
@@ -51,17 +51,17 @@ class Authentication(object):
     * http://wiki.vg/Authentication
     """
 
-    def __init__(self, username, clientToken=GNAJOM_CLIENT_TOKEN,
-                 accessToken=None,
+    def __init__(self, username, client_token=GNAJOM_CLIENT_TOKEN,
+                 access_token=None,
                  host=HOST_YGGDRASIL, agent=MINECRAFT_AGENT_V1):
 
         self.api = APIHost(host)
         self.username = username
         self.user = None
         self.agent = agent
-        self.clientToken = clientToken
-        self.accessToken = accessToken
-        self.selectedProfile = None
+        self.client_token = client_token
+        self.access_token = access_token
+        self.selected_profile = None
 
 
     def authenticate(self, password):
@@ -76,8 +76,8 @@ class Authentication(object):
         if self.agent:
             payload["agent"] = self.agent
 
-        if self.clientToken:
-            payload["clientToken"] = self.clientToken
+        if self.client_token:
+            payload["clientToken"] = self.client_token
 
         try:
             ret = self.api.post("/authenticate", payload)
@@ -93,9 +93,9 @@ class Authentication(object):
                 raise
 
         else:
-            self.clientToken = ret["clientToken"]
-            self.accessToken = ret["accessToken"]
-            self.selectedProfile = ret.get("selectedProfile")
+            self.client_token = ret["clientToken"]
+            self.access_token = ret["accessToken"]
+            self.selected_profile = ret.get("selectedProfile")
             self.user = ret.get("user")
 
             return True
@@ -107,8 +107,8 @@ class Authentication(object):
         accessToken.
         """
 
-        payload = {"accessToken": self.accessToken,
-                   "clientToken": self.clientToken,
+        payload = {"accessToken": self.access_token,
+                   "clientToken": self.client_token,
                    "requestUser": True, }
 
         try:
@@ -126,9 +126,9 @@ class Authentication(object):
                 raise
 
         else:
-            self.clientToken = ret["clientToken"]
-            self.accessToken = ret["accessToken"]
-            self.selectedProfile = ret.get("selectedProfile")
+            self.client_token = ret["clientToken"]
+            self.access_token = ret["accessToken"]
+            self.selected_profile = ret.get("selectedProfile")
             self.user = ret.get("user")
 
             return True
@@ -141,10 +141,10 @@ class Authentication(object):
         renewed or a full re-auth may be required.
         """
 
-        if not self.accessToken:
+        if not self.access_token:
             return False
 
-        payload = {"accessToken": self.accessToken, }
+        payload = {"accessToken": self.access_token, }
 
         try:
             self.api.post("/validate", payload)
@@ -189,17 +189,17 @@ class Authentication(object):
         invalidates the current session
         """
 
-        if not self.accessToken:
+        if not self.access_token:
             return None
 
-        payload = {"accessToken": self.accessToken,
-                   "clientToken": self.clientToken, }
+        payload = {"accessToken": self.access_token,
+                   "clientToken": self.client_token, }
 
         # even if we're already invalidated, this won't raise an
         # HTTPError, so we won't try to filter out a 403
         self.api.post("/invalidate", payload)
 
-        self.accessToken = None
+        self.access_token = None
         return True
 
 
@@ -238,14 +238,14 @@ class Authentication(object):
         dump(session, stream)
 
 
-    def ensureClientToken(self):
+    def ensure_client_token(self):
         """
         generate a clientToken for this session if one doesn't already
         exist
         """
 
-        if not self.clientToken:
-            self.clientToken = generate_clientToken()
+        if not self.client_token:
+            self.client_token = generate_client_token()
 
 
 def auth_from_file(filename):
@@ -258,7 +258,7 @@ def auth_from_file(filename):
     return auth
 
 
-def generate_clientToken():
+def generate_client_token():
     """
     Generate a random clientToken string via UUID
     """
