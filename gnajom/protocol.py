@@ -208,7 +208,7 @@ class ProtocolPacketMeta(type):
     CLIENTBOUND_PACKET_IDS = {}
     SERVERBOUND_PACKET_IDS = {}
 
-    def __init__(cls, name, bases, class_dict):
+    def __new__(cls, name, bases, class_dict):
         if "PACKET_STATE" not in class_dict:
             return
         if "PACKET_ID" not in class_dict:
