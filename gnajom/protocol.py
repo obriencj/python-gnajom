@@ -129,7 +129,7 @@ def receive_packet(stream, state, compressed=False, raw=False):
         return packet_id, buf.read()
 
     else:
-        packet = ClientboundPacket.for_packet_id(state, packet_id)
+        packet = ProtocolPacket.for_packet_id(state, packet_id)
         packet.unpack(buf)
         return packet
 
@@ -208,7 +208,7 @@ class ProtocolPacketMeta(type):
     CLIENTBOUND_PACKET_IDS = {}
     SERVERBOUND_PACKET_IDS = {}
 
-    def __new__(cls, name, bases, class_dict):
+    def __init__(cls, name, bases, class_dict):
         if "PACKET_STATE" not in class_dict:
             return
         if "PACKET_ID" not in class_dict:
@@ -255,15 +255,11 @@ class ProtocolPacket(object, metaclass=ProtocolPacketMeta):
 
 class ClientboundPacket(ProtocolPacket):
 
-    for_packet_id = ProtocolPacket.for_clientbound_packet_id
-
     def unpack(self, stream):
         raise NotImplemented(type(self).__name__)
 
 
 class ServerboundPacket(ProtocolPacket):
-
-    for_packet_id = ProtocolPacket.for_serverbound_packet_id
 
     def pack(self, stream):
         raise NotImplemented(type(self).__name__)
@@ -331,17 +327,11 @@ class Response(ClientboundPacket):
     PACKET_ID = 0x00
     PACKET_NAME = "Response"
 
-    def unpack(self, stream):
-        pass
-
 
 class Pong(ClientboundPacket):
     PACKET_STATE = SessionState.STATUS
     PACKET_ID = 0x01
     PACKET_NAME = "Pong"
-
-    def unpack(self, stream):
-        pass
 
 
 class Disconnect(ClientboundPacket):
@@ -391,7 +381,8 @@ class ClientSession(object):
         self.state = SessionState.CLOSED
         self.compression = False
         self.socket = None
-        self.stream = None
+        self.socketin = None
+        self.socketout = None
         self.queue = deque()
 
 
@@ -413,7 +404,8 @@ class ClientSession(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((host, port))
         self.socket = sock
-        self.stream = sock.makefile("r+b")
+        self.socket_in = sock.makefile("r+b")
+        self.socket_out = sock.makefile("w+b")
 
         self.state = SessionState.CONNECTED
 
@@ -425,7 +417,8 @@ class ClientSession(object):
         self.state = SessionState.CLOSED
         self.compression = False
         self.socket = None
-        self.stream = None
+        self.socket_in = None
+        self.socket_out = None
         self.queue.clear()
 
 
@@ -433,11 +426,11 @@ class ClientSession(object):
         if verify_state:
             packet.verify_state(self)
 
-        send_packet(self.stream, packet, compressed=self.compression)
+        send_packet(self.socket_out, packet, compressed=self.compression)
 
 
     def receive(self, verify_state=True):
-        packet = receive_packet(self.stream, self.state,
+        packet = receive_packet(self.socket_in, self.state,
                                 compressed=self.compression)
         if verify_state:
             packet.verify_state(self)
